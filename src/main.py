@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import time
-import tkinter as tk
 
 import cv2
 import numpy as np
+import tkinter as tk
 from PIL import Image, ImageTk
 
 from camera import Camera
@@ -35,7 +35,10 @@ def main() -> int:
     label = tk.Label(canvas, text="Initializing camera...", fg="white", bg="black")
     canvas.create_window(width // 2, height // 2, window=label)
 
+    fps_values = []
+
     def tick() -> None:
+        t0 = time.perf_counter()
         frame = camera.read()
         if frame is None:
             label.configure(text="No camera frame")
@@ -49,6 +52,19 @@ def main() -> int:
         eye.update(target_x, target_y, time.time())
         photo = projector.frame()
         canvas.itemconfig(img_id, image=photo)
+
+        if settings.debug_overlay and detection and detection.box:
+            x1, y1, x2, y2 = detection.box
+            canvas.create_rectangle(x1, y1, x2, y2, outline="lime", width=2)
+            canvas.create_text(x1, y1 - 10, text=detection.label, fill="lime", anchor="sw")
+
+        dt = time.perf_counter() - t0
+        fps_values.append(1.0 / dt if dt > 0 else 0)
+        if len(fps_values) > 30:
+            fps_values.pop(0)
+        avg_fps = sum(fps_values) / len(fps_values)
+
+        root.title(f"All-Seeing Eye — {avg_fps:.1f} FPS")
 
         if settings.fullscreen:
             root.after(int(1000 / settings.fps), tick)

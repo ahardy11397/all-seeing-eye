@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Settings:
-    camera_url: str = "http://192.168.1.100:8080/video"
+    camera_url: str = "http://192.168.1.166:8080/video"
     width: int = 640
     height: int = 480
     fps: int = 30
@@ -20,6 +20,9 @@ class Settings:
     idle_glance_duration_s: tuple[float, float] = (0.8, 2.0)
     fullscreen: bool = True
     detection_interval: int = 3
+    debug_overlay: bool = True
+    use_local_camera: bool = False
+    local_camera_index: int = 0
 
 
 settings = Settings()
