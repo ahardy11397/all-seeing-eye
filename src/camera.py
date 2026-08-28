@@ -10,6 +10,8 @@ from config import settings
 class Camera:
     def __init__(self) -> None:
         self.is_local = settings.use_local_camera
+        self._fail_count = 0
+        self._max_fails = 20
         if self.is_local:
             self.cap = cv2.VideoCapture(settings.local_camera_index)
             if not self.cap.isOpened():
@@ -24,8 +26,14 @@ class Camera:
 
     def read(self):
         ok, frame = self.cap.read()
-        if not ok:
+        if not ok or frame is None or frame.size == 0:
+            self._fail_count += 1
+            if self._fail_count >= self._max_fails:
+                raise RuntimeError(
+                    f"Camera stream failed after {self._fail_count} consecutive bad frames: {settings.camera_url}"
+                )
             return None
+        self._fail_count = 0
         return frame
 
     def release(self) -> None:

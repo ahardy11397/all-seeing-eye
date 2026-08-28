@@ -68,10 +68,17 @@ class Dashboard:
             t0 = time.perf_counter()
             frame = self.camera.read()
             if frame is None:
+                self.detection_label.set("Camera frame lost")
                 self.root.after(100, tick)
                 return
 
-            detection = self.detector.detect(frame)
+            try:
+                detection = self.detector.detect(frame)
+            except Exception as exc:
+                self.detection_label.set(f"Detection error: {exc}")
+                self.root.after(100, tick)
+                return
+
             self._draw_debug_overlay(detection)
 
             target_x = detection.x if detection else None

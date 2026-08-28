@@ -39,19 +39,32 @@ def main() -> int:
 
     def tick() -> None:
         t0 = time.perf_counter()
-        frame = camera.read()
+        try:
+            frame = camera.read()
+        except RuntimeError as exc:
+            label.configure(text=str(exc))
+            root.after(100, tick)
+            return
+
         if frame is None:
             label.configure(text="No camera frame")
             root.after(100, tick)
             return
 
-        detection = detector.detect(frame)
+        try:
+            detection = detector.detect(frame)
+        except Exception as exc:
+            label.configure(text=f"Detection error: {exc}")
+            root.after(100, tick)
+            return
+
         target_x = detection.x if detection else None
         target_y = detection.y if detection else None
 
         eye.update(target_x, target_y, time.time())
         photo = projector.frame()
         canvas.itemconfig(img_id, image=photo)
+        label.configure(text="")
 
         if settings.debug_overlay and detection and detection.box:
             x1, y1, x2, y2 = detection.box
