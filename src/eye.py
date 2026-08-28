@@ -168,18 +168,18 @@ class Eye:
                 self.cx + lid_width,
                 self.cy + settings.eye_radius + 8,
             ]
-            draw.rectangle(upper_lid, fill=(235, 232, 225, 255))
-            draw.rectangle(lower_lid, fill=(235, 232, 225, 255))
+            draw.rectangle(upper_lid, fill=(220, 170, 140, 255))
+            draw.rectangle(lower_lid, fill=(220, 170, 140, 255))
 
             draw.line(
                 [self.cx - lid_width, upper_y, self.cx + lid_width, upper_y],
-                fill=(200, 195, 185, 255),
-                width=2,
+                fill=(190, 145, 120, 255),
+                width=3,
             )
             draw.line(
                 [self.cx - lid_width, lower_y, self.cx + lid_width, lower_y],
-                fill=(200, 195, 185, 255),
-                width=2,
+                fill=(190, 145, 120, 255),
+                width=3,
             )
 
         return img
