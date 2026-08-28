@@ -21,6 +21,8 @@ class Detector:
         self.model = None
         self._last_detection: Detection | None = None
         self._frame_count = 0
+        self._positive_count = 0
+        self._negative_count = 0
 
     def _load_model(self):
         if self.model is None:
@@ -35,21 +37,38 @@ class Detector:
         self._load_model()
         results = self.model(frame, verbose=False, classes=[0, 2, 5, 7])
 
-        if not results:
-            self._last_detection = None
-            return None
+        candidate = None
+        if results:
+            boxes = results[0].boxes
+            if boxes is not None and len(boxes) > 0:
+                filtered = []
+                for b in boxes:
+                    conf = float(b.conf[0].item())
+                    x1, y1, x2, y2 = map(int, b.xyxy[0].tolist())
+                    area = (x2 - x1) * (y2 - y1)
+                    if conf >= settings.min_confidence and area >= settings.min_box_area:
+                        filtered.append((area, b, conf, x1, y1, x2, y2))
 
-        boxes = results[0].boxes
-        if boxes is None or len(boxes) == 0:
-            self._last_detection = None
-            return None
+                if filtered:
+                    filtered.sort(key=lambda t: t[0], reverse=True)
+                    area, b, conf, x1, y1, x2, y2 = filtered[0]
+                    cx = int((x1 + x2) / 2)
+                    cy = int((y1 + y2) / 2)
+                    cls = int(b.cls[0].item())
+                    label = "person" if cls == 0 else "vehicle"
+                    candidate = Detection(cx, cy, label, box=(x1, y1, x2, y2))
 
-        largest = max(boxes, key=lambda b: float((b.xyxy[0][2] - b.xyxy[0][0]) * (b.xyxy[0][3] - b.xyxy[0][1])))
-        xyxy = largest.xyxy[0].tolist()
-        x1, y1, x2, y2 = map(int, xyxy)
-        x = int((x1 + x2) / 2)
-        y = int((y1 + y2) / 2)
-        cls = int(largest.cls[0].item())
-        label = "person" if cls == 0 else "vehicle"
-        self._last_detection = Detection(x, y, label, box=(x1, y1, x2, y2))
+        if candidate:
+            self._positive_count += 1
+            self._negative_count = 0
+            if self._positive_count >= settings.required_detections:
+                self._last_detection = candidate
+                return self._last_detection
+        else:
+            self._negative_count += 1
+            self._positive_count = 0
+            if self._negative_count >= settings.required_detections:
+                self._last_detection = None
+                return None
+
         return self._last_detection
