@@ -22,6 +22,9 @@ class Settings:
     min_confidence: float = 0.7
     min_box_area: int = 8000
     required_detections: int = 3
+    min_motion_pixels: int = 25
+    parked_frames: int = 12
+    parked_cooldown_s: float = 20.0
     use_local_camera: bool = False
     local_camera_index: int = 0
 
