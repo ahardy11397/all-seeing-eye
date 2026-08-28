@@ -16,7 +16,7 @@ A Halloween projection project: a projected eye in the round front-closet window
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python src/main.py
+python3 run.py
 ```
 
 ## Project structure

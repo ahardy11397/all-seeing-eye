@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import time
+import tkinter as tk
+from importlib.util import find_spec
 
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
-import tkinter as tk
 
-from .config import settings
-from .eye import Eye
-from .projector import Projector
-from .tracker import Tracker
+from config import Settings, settings
+from eye import Eye
+from projector import Projector
+from tracker import Tracker
 
 
 def main() -> int:
