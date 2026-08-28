@@ -15,7 +15,7 @@ Halloween front-window projection. An eye in the round closet window that watche
    - Start server, note the IP/port shown (default `http://<phone-ip>:8080/video`)
 2. On the laptop:
    - Clone this repo
-   - Install deps:
+   - Create venv and install deps:
      ```bash
      python3 -m venv .venv
      source .venv/bin/activate
@@ -23,14 +23,17 @@ Halloween front-window projection. An eye in the round closet window that watche
      ```
    - Edit `src/config.py` and set `camera_url` to your phone's stream URL
    - Connect projector, set it as primary display if needed
-3. Run:
+3. Run dashboard:
    ```bash
-   python3 run.py
+   ./run_dashboard.py
    ```
-   Press `F11` or `Esc` to exit fullscreen if needed.
+4. Run fullscreen projection:
+   ```bash
+   ./run.py
+   ```
 
 ## Notes
 
 - First run downloads `yolov8n.pt` automatically (~6 MB)
 - Detection runs every 3rd frame by default to keep CPU usage down
-- When nothing is detected, the eye does idle glances instead of staring at center
+- When nothing is detected, the eye does idle glances/scan instead of staring at center
