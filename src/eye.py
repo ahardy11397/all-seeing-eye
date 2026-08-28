@@ -152,20 +152,34 @@ class Eye:
         if self.blink_started_at is not None:
             t = min(1.0, (time.time() - self.blink_started_at) / self.blink_duration)
             close_t = math.sin(t * math.pi)
-            close_y = int(close_t * (settings.eye_radius - 6))
-            upper = [
-                self.cx - settings.eye_radius,
-                self.cy - settings.eye_radius,
-                self.cx + settings.eye_radius,
-                self.cy - 6 + close_y,
+            lid_width = settings.eye_radius + 14
+            upper_y = int(self.cy - 6 + close_t * (settings.eye_radius - 2))
+            lower_y = int(self.cy + 6 - close_t * (settings.eye_radius - 2))
+
+            upper_lid = [
+                self.cx - lid_width,
+                self.cy - settings.eye_radius - 8,
+                self.cx + lid_width,
+                upper_y,
             ]
-            lower = [
-                self.cx - settings.eye_radius,
-                self.cy + 6 - close_y,
-                self.cx + settings.eye_radius,
-                self.cy + settings.eye_radius,
+            lower_lid = [
+                self.cx - lid_width,
+                lower_y,
+                self.cx + lid_width,
+                self.cy + settings.eye_radius + 8,
             ]
-            draw.rectangle(upper, fill=(245, 245, 240, 255))
-            draw.rectangle(lower, fill=(245, 245, 240, 255))
+            draw.rectangle(upper_lid, fill=(235, 232, 225, 255))
+            draw.rectangle(lower_lid, fill=(235, 232, 225, 255))
+
+            draw.line(
+                [self.cx - lid_width, upper_y, self.cx + lid_width, upper_y],
+                fill=(200, 195, 185, 255),
+                width=2,
+            )
+            draw.line(
+                [self.cx - lid_width, lower_y, self.cx + lid_width, lower_y],
+                fill=(200, 195, 185, 255),
+                width=2,
+            )
 
         return img
