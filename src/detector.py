@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import cv2
+import math
 import numpy as np
 
 from config import settings
@@ -77,12 +78,11 @@ class Detector:
         return float(math.hypot(cx - pcx, cy - pcy))
 
     def detect(self, frame: np.ndarray) -> Detection | None:
-        import math
         self._frame_count += 1
         if self._frame_count % settings.detection_interval != 0:
             return self._last_detection
 
-        now = cv2.getTickCount() / cv2.getTickFrequency()
+        now = time.time()
         if self._vehicle_parked_until and now < self._vehicle_parked_until:
             self._prev_gray = None
             self._last_detection = None
@@ -105,7 +105,7 @@ class Detector:
 
                 if filtered:
                     filtered.sort(key=lambda t: t[0], reverse=True)
-                    _, b, conf, x1, y1, x2, y2 = filtered[0]
+                    area, b, conf, x1, y1, x2, y2 = filtered[0]
                     cx = int((x1 + x2) / 2)
                     cy = int((y1 + y2) / 2)
                     cls = int(b.cls[0].item())
@@ -113,13 +113,14 @@ class Detector:
                     candidate = Detection(cx, cy, label, box=(x1, y1, x2, y2))
 
         if candidate:
-            if self._tracked_box:
+            if candidate.box is not None:
                 motion = self._motion_score(frame)
                 shift = self._center_shift()
                 self._motion_history.append(motion)
                 if len(self._motion_history) > 12:
                     self._motion_history.pop(0)
-                avg_motion = sum(self._motion_history) / len(self._motion_history)
+
+                avg_motion = sum(self._motion_history) / len(self._motion_history) if self._motion_history else 0.0
 
                 if avg_motion < 250 and shift < 1.8:
                     self._vehicle_idle_frames += 1
@@ -138,10 +139,11 @@ class Detector:
                     self._vehicle_idle_frames = 0
 
             self._tracked_box = candidate.box
-            self._roi_mask = self._ensure_roi_mask(frame, candidate.box)
-            self._box_history.append(tuple(candidate.box))
-            if len(self._box_history) > 8:
-                self._box_history.pop(0)
+            if candidate.box is not None:
+                self._roi_mask = self._ensure_roi_mask(frame, candidate.box)
+                self._box_history.append(candidate.box)
+                if len(self._box_history) > 8:
+                    self._box_history.pop(0)
 
             self._positive_count += 1
             self._negative_count = 0
