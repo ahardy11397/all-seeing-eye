@@ -63,7 +63,6 @@ class Dashboard:
             self.detection_label.set(f"{detection.label} at ({detection.x}, {detection.y})")
         else:
             self.detection_label.set("No detection")
-
     def run(self) -> int:
         def tick() -> None:
             t0 = time.perf_counter()

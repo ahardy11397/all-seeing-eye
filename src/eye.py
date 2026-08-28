@@ -20,32 +20,79 @@ class Eye:
         self.next_blink_at = self._next_blink_time()
         self.blink_started_at: float | None = None
         self.blink_duration: float = 0.0
-        self.idle_target_x = self.cx
-        self.idle_target_y = self.cy
-        self.next_idle_glance_at = self._next_idle_glance_time()
+
+        self.idle_mode = "idle"  # idle | glance | scan
+        self.idle_scan_angle = 0.0
+        self.idle_scan_speed = random.uniform(0.4, 0.9)
+        self.idle_next_switch = time.time() + random.uniform(2.0, 5.0)
+        self.idle_glance_target_x = self.cx
+        self.idle_glance_target_y = self.cy
+        self.idle_glance_origin_x = self.cx
+        self.idle_glance_origin_y = self.cy
         self.idle_glance_started_at: float | None = None
         self.idle_glance_duration: float = 0.0
-        self.idle_origin_x = self.cx
-        self.idle_origin_y = self.cy
 
     def _next_blink_time(self) -> float:
         return time.time() + random.uniform(*settings.blink_interval_s)
 
-    def _next_idle_glance_time(self) -> float:
-        return time.time() + random.uniform(*settings.idle_glance_interval_s)
+    def _switch_idle_mode(self, now: float) -> None:
+        modes = ["idle", "glance", "scan"]
+        modes.remove(self.idle_mode)
+        self.idle_mode = random.choice(modes)
+        if self.idle_mode == "scan":
+            self.idle_scan_speed = random.uniform(0.4, 0.9)
+        self.idle_next_switch = now + random.uniform(2.0, 5.0)
+
+    def _idle_target(self, now: float) -> tuple[int, int]:
+        if now >= self.idle_next_switch:
+            self._switch_idle_mode(now)
+
+        if self.idle_mode == "scan":
+            self.idle_scan_angle += self.idle_scan_speed * 0.05
+            if self.idle_scan_angle > math.pi * 2:
+                self.idle_scan_angle -= math.pi * 2
+            reach = random.uniform(settings.max_pupil_offset * 0.7, settings.max_pupil_offset)
+            tx = int(self.cx + math.cos(self.idle_scan_angle) * reach)
+            ty = int(self.cy + math.sin(self.idle_scan_angle * 0.7) * reach * 0.6)
+            return tx, ty
+
+        if self.idle_mode == "glance":
+            if self.idle_glance_started_at is None:
+                self.idle_glance_started_at = now
+                self.idle_glance_duration = random.uniform(*settings.idle_glance_duration_s)
+                self.idle_glance_origin_x = self.iris_x
+                self.idle_glance_origin_y = self.iris_y
+                angle = random.uniform(0, math.pi * 2)
+                reach = random.uniform(25, settings.max_pupil_offset)
+                self.idle_glance_target_x = int(self.cx + math.cos(angle) * reach)
+                self.idle_glance_target_y = int(self.cy + math.sin(angle) * reach)
+
+            if now - self.idle_glance_started_at >= self.idle_glance_duration:
+                self.idle_glance_started_at = None
+                self.idle_mode = "idle"
+                self.idle_next_switch = now + random.uniform(1.0, 3.0)
+                return int(self.idle_glance_origin_x), int(self.idle_glance_origin_y)
+
+            return self.idle_glance_target_x, self.idle_glance_target_y
+
+        return self.cx, self.cy
 
     def update(self, target_x: int | None, target_y: int | None, now: float) -> None:
         if target_x is not None and target_y is not None:
             tx = max(0, min(self.width, target_x))
             ty = max(0, min(self.height, target_y))
-            self.idle_origin_x = self.cx
-            self.idle_origin_y = self.cy
+            self.idle_mode = "idle"
             self.idle_glance_started_at = None
+            self.idle_next_switch = now + random.uniform(2.0, 5.0)
         else:
             tx, ty = self._idle_target(now)
 
         self.iris_x += (tx - self.iris_x) * settings.smoothing
         self.iris_y += (ty - self.iris_y) * settings.smoothing
+
+        blink_interval = settings.blink_interval_s
+        if self.idle_mode != "idle":
+            blink_interval = (blink_interval[0] * 0.6, blink_interval[1] * 0.7)
 
         if self.blink_started_at is None and now >= self.next_blink_at:
             self.blink_started_at = now
@@ -54,26 +101,7 @@ class Eye:
         if self.blink_started_at is not None:
             if now - self.blink_started_at >= self.blink_duration:
                 self.blink_started_at = None
-                self.next_blink_at = self._next_blink_time()
-
-    def _idle_target(self, now: float) -> tuple[int, int]:
-        if self.idle_glance_started_at is None and now >= self.next_idle_glance_at:
-            self.idle_glance_started_at = now
-            self.idle_glance_duration = random.uniform(*settings.idle_glance_duration_s)
-            self.idle_origin_x = self.iris_x
-            self.idle_origin_y = self.iris_y
-            angle = random.uniform(0, math.pi * 2)
-            reach = random.uniform(20, settings.max_pupil_offset)
-            self.idle_target_x = int(self.cx + math.cos(angle) * reach)
-            self.idle_target_y = int(self.cy + math.sin(angle) * reach)
-
-        if self.idle_glance_started_at is not None:
-            if now - self.idle_glance_started_at >= self.idle_glance_duration:
-                self.idle_glance_started_at = None
-                self.next_idle_glance_at = self._next_idle_glance_time()
-                return int(self.idle_origin_x), int(self.idle_origin_y)
-
-        return self.idle_target_x, self.idle_target_y
+                self.next_blink_at = now + random.uniform(*blink_interval)
 
     def render(self) -> Image.Image:
         img = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))

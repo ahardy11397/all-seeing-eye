@@ -16,8 +16,8 @@ class Settings:
     smoothing: float = 0.25
     blink_interval_s: tuple[float, float] = (2.5, 7.0)
     blink_duration_s: tuple[float, float] = (0.08, 0.18)
-    idle_glance_interval_s: tuple[float, float] = (1.5, 4.0)
-    idle_glance_duration_s: tuple[float, float] = (0.8, 2.0)
+    idle_glance_interval_s: tuple[float, float] = (1.0, 3.0)
+    idle_glance_duration_s: tuple[float, float] = (1.0, 2.5)
     detection_interval: int = 3
     min_confidence: float = 0.7
     min_box_area: int = 8000
