@@ -1,9 +1,6 @@
-Pillow>=10.3
+opencv-python>=4.9
 
-# Optional heavy dependency; install after init if needed:
+# optional heavy dependency; install after init if needed:
 # pip install opencv-python-headless>=4.9
 # or: sudo apt install python3-opencv
 numpy>=1.26
-# install: sudo apt install python3-opencv
-# or: pip install opencv-python>=4.9
-opencv-python>=4.9

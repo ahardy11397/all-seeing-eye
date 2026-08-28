@@ -1,33 +1,36 @@
 # All-Seeing Eye
 
-A Halloween projection project: a projected eye in the round front-closet window that watches and follows cars/people as they pass.
+Halloween front-window projection. An eye in the round closet window that watches cars and people.
 
-## Requirements
+## Hardware
 
-- Python 3.10+
-- Camera pointed outward
-- Projector aimed at the window from inside
-- Motion/object detection to track subjects
-- Eye renderer that pans/tracks movement
+- Android phone with IP Webcam app
+- Laptop running Kali Linux
+- Mini projector aimed at the window from inside
 
-## Quick start
+## Setup
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python3 run.py
-```
+1. On the phone:
+   - Install IP Webcam
+   - Start server, note the IP/port shown (default `http://<phone-ip>:8080/video`)
+2. On the laptop:
+   - Clone this repo
+   - Install deps:
+     ```bash
+     python3 -m venv .venv
+     source .venv/bin/activate
+     pip install -r requirements.txt
+     ```
+   - Edit `src/config.py` and set `camera_url` to your phone's stream URL
+   - Connect projector, set it as primary display if needed
+3. Run:
+   ```bash
+   python3 run.py
+   ```
+   Press `F11` or `Esc` to exit fullscreen if needed.
 
-## Project structure
+## Notes
 
-```text
-src/
-  main.py            # entrypoint
-  eye.py             # eye geometry, iris, pupil, blinking
-  tracker.py         # camera capture + motion/object detection
-  projector.py       # render + project / window preview
-  config.py          # tunables
-data/
-  textures/          # optional iris/sclera assets
-```
+- First run downloads `yolov8n.pt` automatically (~6 MB)
+- Detection runs every 3rd frame by default to keep CPU usage down
+- When nothing is detected, the eye does idle glances instead of staring at center
