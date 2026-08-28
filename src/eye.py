@@ -48,7 +48,7 @@ class Eye:
             self._switch_idle_mode(now)
 
         if self.idle_mode == "scan":
-            self.idle_scan_angle += self.idle_scan_speed * 0.05
+            self.idle_scan_angle += self.idle_scan_speed * 0.025
             if self.idle_scan_angle > math.pi * 2:
                 self.idle_scan_angle -= math.pi * 2
             reach = random.uniform(settings.max_pupil_offset * 0.7, settings.max_pupil_offset)
@@ -181,5 +181,17 @@ class Eye:
                 fill=(190, 145, 120, 255),
                 width=3,
             )
+
+            if close_t > 0.15:
+                lash_color = (40, 20, 10, 255)
+                lash_count = 14
+                for i in range(lash_count + 1):
+                    frac = i / lash_count
+                    lx = int(self.cx - lid_width + frac * lid_width * 2)
+                    length = int(6 + 4 * math.sin(frac * math.pi))
+                    angle = -math.pi / 2 + (frac - 0.5) * 0.8
+                    lx2 = int(lx + math.cos(angle) * length)
+                    ly2 = int(upper_y + math.sin(angle) * length)
+                    draw.line([lx, upper_y, lx2, ly2], fill=lash_color, width=2)
 
         return img

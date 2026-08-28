@@ -13,11 +13,11 @@ class Settings:
     iris_radius: int = 70
     pupil_radius: int = 28
     max_pupil_offset: int = 45
-    smoothing: float = 0.25
-    blink_interval_s: tuple[float, float] = (2.5, 7.0)
-    blink_duration_s: tuple[float, float] = (0.08, 0.18)
-    idle_glance_interval_s: tuple[float, float] = (1.0, 3.0)
-    idle_glance_duration_s: tuple[float, float] = (1.0, 2.5)
+    smoothing: float = 0.18
+    blink_interval_s: tuple[float, float] = (3.0, 8.0)
+    blink_duration_s: tuple[float, float] = (0.12, 0.25)
+    idle_glance_interval_s: tuple[float, float] = (1.2, 3.5)
+    idle_glance_duration_s: tuple[float, float] = (1.2, 2.8)
     detection_interval: int = 3
     min_confidence: float = 0.7
     min_box_area: int = 8000
