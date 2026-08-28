@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from PIL import Image, ImageTk
 
-from .config import settings
-from .eye import Eye
+from config import settings
+from eye import Eye
 
 
 class Projector:

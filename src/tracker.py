@@ -5,7 +5,7 @@ import time
 import cv2
 import numpy as np
 
-from .config import settings
+from config import settings
 
 
 class Tracker:

@@ -6,7 +6,7 @@ import time
 
 from PIL import Image, ImageDraw
 
-from .config import settings
+from config import settings
 
 
 class Eye:
