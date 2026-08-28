@@ -14,7 +14,7 @@ class Settings:
     pupil_radius: int = 28
     max_pupil_offset: int = 45
     smoothing: float = 0.18
-    blink_interval_s: tuple[float, float] = (3.0, 8.0)
+    blink_interval_s: tuple[float, float] = (8.0, 25.0)
     blink_duration_s: tuple[float, float] = (0.12, 0.25)
     idle_glance_interval_s: tuple[float, float] = (1.2, 3.5)
     idle_glance_duration_s: tuple[float, float] = (1.2, 2.8)
