@@ -1,0 +1,1 @@
+a halloween projection project mapping motion tracking project. I want to project an eye into the round closet window on the front of the house and have a camera pointed out so the eye follows cars or people as they pass by
