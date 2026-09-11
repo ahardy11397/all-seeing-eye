@@ -4,7 +4,8 @@ import math
 import random
 import time
 
-from PIL import Image, ImageDraw
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
 
 from config import settings
 
@@ -31,6 +32,207 @@ class Eye:
         self.idle_glance_origin_y = self.cy
         self.idle_glance_started_at: float | None = None
         self.idle_glance_duration: float = 0.0
+
+        self.pupil_scale = 1.0
+        self._pupil_target = 1.0
+        self._next_dilation_change = time.time() + 3.0
+
+        self._build_static_layers()
+
+    # ------------------------------------------------------------------ #
+    # static layers (built once)                                          #
+    # ------------------------------------------------------------------ #
+
+    def _build_static_layers(self) -> None:
+        R = settings.eye_radius
+        ir = settings.iris_radius
+
+        # --- sclera: white with edge shading, upper-lid shadow, faint capillaries
+        yy, xx = np.mgrid[0:self.height, 0:self.width]
+        dx = xx - self.cx
+        dy = yy - self.cy
+        d = np.sqrt(dx * dx + dy * dy) / R
+        inside = d <= 1.0
+        t = np.clip(d, 0, 1)
+
+        base = 252.0 - 30.0 * t ** 1.8
+        # shadow cast by the upper eyelid
+        lid_shadow_y = self.cy - R * 0.35
+        shade = np.clip((yy - lid_shadow_y) / (0.55 * R), 0.0, 1.0)
+        base = base - 22.0 * (1.0 - shade) * inside
+
+        r = np.clip(base - 3 * t + 2 * t, 0, 255)
+        g = np.clip(base - 1 * t - 4 * t, 0, 255)
+        b = np.clip(base + 2, 0, 255)
+
+        # wet glossy sheen: soft broad specular on the upper-left of the globe
+        sheen_x = self.cx - R * 0.30
+        sheen_y = self.cy - R * 0.38
+        sd = np.sqrt((xx - sheen_x) ** 2 + (yy - sheen_y) ** 2) / (R * 0.75)
+        sheen = np.clip(1.0 - sd, 0, 1) ** 2 * inside
+        sheen *= 18.0
+        r = np.clip(r + sheen, 0, 255)
+        g = np.clip(g + sheen, 0, 255)
+        b = np.clip(b + sheen * 0.9, 0, 255)
+
+        # faint capillaries: thin branching squiggles, barely visible, kept away
+        # from the center so they never read as cracks across the white
+        rng2 = np.random.default_rng(42)
+        cap = np.zeros((self.height, self.width), dtype=float)
+        for _ in range(24):
+            ang = rng2.uniform(0, 2 * math.pi)
+            start_r = rng2.uniform(0.72, 0.98) * R
+            sx = self.cx + math.cos(ang) * start_r
+            sy = self.cy + math.sin(ang) * start_r
+            steps = rng2.integers(6, 14)
+            px_, py_ = sx, sy
+            heading = ang + math.pi + rng2.uniform(-0.7, 0.7)
+            strength = rng2.uniform(0.3, 0.7)
+            for _ in range(steps):
+                heading += rng2.uniform(-0.6, 0.6)
+                px_ += math.cos(heading) * 2.5
+                py_ += math.sin(heading) * 2.5
+                ix, iy = int(px_), int(py_)
+                # fade out toward the middle of the globe
+                pd = math.hypot(px_ - self.cx, py_ - self.cy) / R
+                if pd < 0.55:
+                    continue
+                if 0 <= iy < self.height and 0 <= ix < self.width:
+                    fade = min(1.0, (pd - 0.55) / 0.2)
+                    cap[iy, ix] = strength * fade
+        # very light blur, keeping them thin and translucent
+        cap = np.asarray(Image.fromarray((cap * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6)), dtype=float) / 255.0
+        cap_strength = 11.0
+        r = np.clip(r + cap * cap_strength * 2.4, 0, 255)
+        g = np.clip(g - cap * cap_strength, 0, 255)
+        b = np.clip(b - cap * cap_strength, 0, 255)
+
+        alpha = (inside * 255).astype(np.uint8)
+
+        sclera = np.dstack(
+            [r.astype(np.uint8), g.astype(np.uint8), b.astype(np.uint8), alpha]
+        )
+        self._sclera_img = Image.fromarray(sclera, "RGBA")
+        self._sclera_alpha = alpha
+
+        # --- iris texture: radial gradient + fibers + limbal ring + flecks
+        size = ir * 2
+        iyy, ixx = np.mgrid[0:size, 0:size]
+        icx = icy = size / 2.0
+        idd = np.sqrt((ixx - icx) ** 2 + (iyy - icy) ** 2) / ir
+        theta = np.arctan2(iyy - icy, ixx - icx)
+
+        rng = np.random.default_rng(11)
+        fib = np.zeros_like(idd)
+        for _ in range(6):
+            fib += np.sin(theta * rng.integers(8, 40) + rng.uniform(0, 2 * math.pi)) * rng.uniform(0.4, 1.0)
+        fib /= 6.0
+
+        # radial fiber streaks: bright/dark spokes from pupil toward limbus
+        fibers = rng.uniform(0, 2 * math.pi, 90)
+        fiber_field = np.zeros_like(idd)
+        for fa in fibers:
+            ang_diff = np.abs((theta - fa + math.pi) % (2 * math.pi) - math.pi)
+            fiber_field += np.clip(1.0 - ang_diff * 18.0, 0, 1) * rng.uniform(0.5, 1.0)
+        fiber_field = np.clip(fiber_field, 0, 1)
+
+        # collarette ring (inner boundary of the ciliary zone)
+        collarette = np.exp(-((idd - 0.42) ** 2) / 0.004)
+
+        inner = np.array([118, 172, 232], dtype=float)
+        outer = np.array([16, 52, 112], dtype=float)
+        tt = np.clip(idd, 0, 1)[..., None]
+        col = inner * (1 - tt) + outer * tt
+        col = col + 16.0 * fib[..., None] * (0.3 + 0.7 * tt)
+        col = col + fiber_field[..., None] * np.array([14.0, 10.0, 4.0]) * (1.0 - tt * 0.5)
+        col = col - collarette[..., None] * 26.0
+
+        ring = np.clip((idd - 0.78) / 0.22, 0, 1)
+        ring_noise = 1.0 + 0.25 * np.sin(theta * 9.0) + 0.15 * np.sin(theta * 23.0 + 1.3)
+        col = col * (1 - (ring * ring_noise)[..., None] * 0.88)
+
+        iris_alpha = (idd <= 1.0) * 255
+        iris_arr = np.dstack(
+            [np.clip(col[..., 0], 0, 255).astype(np.uint8),
+             np.clip(col[..., 1], 0, 255).astype(np.uint8),
+             np.clip(col[..., 2], 0, 255).astype(np.uint8),
+             iris_alpha.astype(np.uint8)]
+        )
+        self._iris_tex = Image.fromarray(iris_arr, "RGBA")
+
+        # amber flecks for texture (sparse, low-contrast so they read as pigment
+        # variation, not glitter)
+        fleck_layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        fdraw = ImageDraw.Draw(fleck_layer)
+        fleck_colors = [
+            (198, 170, 108, 34),
+            (12, 22, 48, 42),
+            (150, 185, 225, 26),
+        ]
+        for _ in range(90):
+            a = rng.uniform(0, 2 * math.pi)
+            rr = rng.uniform(0.35, 0.95) * ir
+            px = icx + math.cos(a) * rr
+            py = icy + math.sin(a) * rr
+            rad = rng.uniform(0.5, 1.3)
+            shade_f = fleck_colors[int(rng.integers(0, len(fleck_colors)))]
+            fdraw.ellipse([px - rad, py - rad, px + rad, py + rad], fill=shade_f)
+        self._iris_tex = Image.alpha_composite(self._iris_tex, fleck_layer)
+
+        # --- pupil sprite (soft-edged black disc, crisper margin than before)
+        ps = settings.pupil_radius
+        psize = ps * 6
+        palpha = Image.new("L", (psize, psize), 0)
+        pdraw = ImageDraw.Draw(palpha)
+        pdraw.ellipse([psize / 2 - ps, psize / 2 - ps, psize / 2 + ps, psize / 2 + ps], fill=255)
+        self._pupil_alpha = palpha.filter(ImageFilter.GaussianBlur(1))
+        self._pupil_base = ps
+
+        # --- specular highlight sprites (window-shaped like real reflections)
+        def make_window_highlight(w: int, h: int, alpha_val: int, blur: int) -> Image.Image:
+            hsize_w, hsize_h = w * 2, h * 2
+            himg = Image.new("RGBA", (hsize_w, hsize_h), (0, 0, 0, 0))
+            hdraw = ImageDraw.Draw(himg)
+            # rounded-rect "window pane" reflection with a divider mullion
+            hdraw.rounded_rectangle(
+                [hsize_w // 2 - w // 2, hsize_h // 2 - h // 2,
+                 hsize_w // 2 + w // 2, hsize_h // 2 + h // 2],
+                radius=max(2, min(w, h) // 6),
+                fill=(255, 255, 255, alpha_val),
+            )
+            hdraw.rectangle(
+                [hsize_w // 2 - 1, hsize_h // 2 - h // 2,
+                 hsize_w // 2 + 1, hsize_h // 2 + h // 2],
+                fill=(0, 0, 0, 0),
+            )
+            return himg.filter(ImageFilter.GaussianBlur(blur))
+
+        self._hl_main = make_window_highlight(max(10, int(ir * 0.42)), max(16, int(ir * 0.6)), 200, 4)
+        self._hl_secondary = make_window_highlight(max(5, int(ir * 0.16)), max(8, int(ir * 0.22)), 85, 3)
+
+        # pre-warp the highlight sprites so reflections curve with the cornea
+        def cornea_warp(sprite: Image.Image, strength: float = 0.22) -> Image.Image:
+            w, h = sprite.size
+            xxg, yyg = np.meshgrid(np.arange(w), np.arange(h))
+            cxw, cyw = (w - 1) / 2, (h - 1) / 2
+            nx = (xxg - cxw) / cxw
+            ny = (yyg - cyw) / cyw
+            rr = np.sqrt(nx ** 2 + ny ** 2)
+            warp = 1.0 - strength * (rr ** 2)
+            src_x = np.clip(cxw + nx * warp * cxw, 0, w - 1).astype(int)
+            src_y = np.clip(cyw + ny * warp * cyw, 0, h - 1).astype(int)
+            arr_s = np.asarray(sprite)
+            out = arr_s[src_y, src_x]
+            return Image.fromarray(out, "RGBA")
+
+        self._hl_main = cornea_warp(self._hl_main)
+        self._hl_secondary = cornea_warp(self._hl_secondary, strength=0.15)
+
+        # --- wet lower-lid reflection line sprite (drawn dynamically, no sprite needed)
+
+    # ------------------------------------------------------------------ #
+    # behaviour                                                           #
+    # ------------------------------------------------------------------ #
 
     def _next_blink_time(self) -> float:
         return time.time() + random.uniform(*settings.blink_interval_s)
@@ -90,6 +292,12 @@ class Eye:
         self.iris_x += (tx - self.iris_x) * settings.smoothing
         self.iris_y += (ty - self.iris_y) * settings.smoothing
 
+        # slow pupil dilation drift
+        if now >= self._next_dilation_change:
+            self._pupil_target = random.uniform(0.86, 1.16)
+            self._next_dilation_change = now + random.uniform(2.0, 6.0)
+        self.pupil_scale += (self._pupil_target - self.pupil_scale) * 0.03
+
         blink_interval = settings.blink_interval_s
         if self.idle_mode != "idle":
             blink_interval = (blink_interval[0] * 0.6, blink_interval[1] * 0.7)
@@ -103,19 +311,15 @@ class Eye:
                 self.blink_started_at = None
                 self.next_blink_at = now + random.uniform(*blink_interval)
 
+    # ------------------------------------------------------------------ #
+    # rendering                                                           #
+    # ------------------------------------------------------------------ #
+
     def render(self) -> Image.Image:
-        img = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
+        R = settings.eye_radius
+        ir = settings.iris_radius
 
-        eye_bbox = [
-            self.cx - settings.eye_radius,
-            self.cy - settings.eye_radius,
-            self.cx + settings.eye_radius,
-            self.cy + settings.eye_radius,
-        ]
-        draw.ellipse(eye_bbox, fill=(240, 240, 235, 255))
-        draw.ellipse(eye_bbox, outline=(20, 20, 20, 255), width=6)
-
+        # iris position clamped inside the eyeball
         dx = self.iris_x - self.cx
         dy = self.iris_y - self.cy
         dist = math.hypot(dx, dy) or 1.0
@@ -124,62 +328,74 @@ class Eye:
         iris_cx = int(self.cx + dx * scale)
         iris_cy = int(self.cy + dy * scale)
 
-        iris_bbox = [
-            iris_cx - settings.iris_radius,
-            iris_cy - settings.iris_radius,
-            iris_cx + settings.iris_radius,
-            iris_cy + settings.iris_radius,
-        ]
-        draw.ellipse(iris_bbox, fill=(60, 120, 200, 255))
-        draw.ellipse(iris_bbox, outline=(10, 30, 80, 255), width=4)
+        canvas = self._sclera_img.copy()
 
-        pupil_bbox = [
-            iris_cx - settings.pupil_radius,
-            iris_cy - settings.pupil_radius,
-            iris_cx + settings.pupil_radius,
-            iris_cy + settings.pupil_radius,
-        ]
-        draw.ellipse(pupil_bbox, fill=(10, 10, 10, 255))
+        # iris layer
+        iris_layer = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
+        iris_layer.paste(self._iris_tex, (iris_cx - ir, iris_cy - ir), self._iris_tex)
+        canvas.alpha_composite(iris_layer)
 
-        highlight_bbox = [
-            iris_cx - settings.pupil_radius + 8,
-            iris_cy - settings.pupil_radius + 8,
-            iris_cx - settings.pupil_radius + 22,
-            iris_cy - settings.pupil_radius + 22,
-        ]
-        draw.ellipse(highlight_bbox, fill=(255, 255, 255, 180))
+        # pupil (soft edge, slow dilation) — concentric with the iris
+        pr = max(4, int(self._pupil_base * self.pupil_scale))
+        psize = int(pr * 6)
+        p_alpha = self._pupil_alpha.resize((psize, psize), Image.Resampling.NEAREST)
+        pupil_layer = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
+        black = Image.new("RGBA", (psize, psize), (6, 6, 10, 255))
+        pupil_layer.paste(black, (iris_cx - psize // 2, iris_cy - psize // 2), p_alpha)
+        canvas.alpha_composite(pupil_layer)
 
+        # wet specular highlights, fixed relative to the light (upper-left),
+        # softly warped so they read as corneal reflections rather than stickers
+        draw = ImageDraw.Draw(canvas)
+        hl1_pos = (iris_cx - int(ir * 0.42), iris_cy - int(ir * 0.48))
+        hl2_pos = (iris_cx + int(ir * 0.30), iris_cy + int(ir * 0.34))
+        hl1 = self._hl_main  # pre-warped at build time
+        hl2 = self._hl_secondary
+        canvas.alpha_composite(hl1, (hl1_pos[0] - hl1.width // 2,
+                                     hl1_pos[1] - hl1.height // 2))
+        canvas.alpha_composite(hl2, (hl2_pos[0] - hl2.width // 2,
+                                     hl2_pos[1] - hl2.height // 2))
+
+        # wet reflection line along the bottom of the iris (lower waterline shine)
+        draw.arc(
+            [iris_cx - int(ir * 0.7), iris_cy - int(ir * 0.5),
+             iris_cx + int(ir * 0.7), iris_cy + int(ir * 0.9)],
+            start=30, end=150, fill=(255, 255, 255, 70), width=3,
+        )
+
+        # soften the eyeball outline (living tissue has no crisp stroke)
+        eye_bbox = [self.cx - R, self.cy - R, self.cx + R, self.cy + R]
+        draw.ellipse(eye_bbox, outline=(96, 74, 66, 110), width=4)
+
+        # clip everything back to the eyeball circle
+        arr = np.asarray(canvas).copy()
+        arr[..., 3] = np.minimum(arr[..., 3], self._sclera_alpha)
+        canvas = Image.fromarray(arr, "RGBA")
+
+        # eyelids + lashes while blinking
         if self.blink_started_at is not None:
             t = min(1.0, (time.time() - self.blink_started_at) / self.blink_duration)
             close_t = math.sin(t * math.pi)
-            lid_width = settings.eye_radius + 14
-            upper_y = int(self.cy - 6 + close_t * (settings.eye_radius - 2))
-            lower_y = int(self.cy + 6 - close_t * (settings.eye_radius - 2))
+            lid_width = R + 14
+            upper_y = int(self.cy - 6 + close_t * (R - 2))
+            lower_y = int(self.cy + 6 - close_t * (R - 2))
 
-            upper_lid = [
-                self.cx - lid_width,
-                self.cy - settings.eye_radius - 8,
-                self.cx + lid_width,
-                upper_y,
-            ]
-            lower_lid = [
-                self.cx - lid_width,
-                lower_y,
-                self.cx + lid_width,
-                self.cy + settings.eye_radius + 8,
-            ]
-            draw.rectangle(upper_lid, fill=(220, 170, 140, 255))
-            draw.rectangle(lower_lid, fill=(220, 170, 140, 255))
-
+            draw = ImageDraw.Draw(canvas)
+            draw.rectangle(
+                [self.cx - lid_width, self.cy - R - 8, self.cx + lid_width, upper_y],
+                fill=(224, 174, 142, 255),
+            )
+            draw.rectangle(
+                [self.cx - lid_width, lower_y, self.cx + lid_width, self.cy + R + 8],
+                fill=(216, 164, 132, 255),
+            )
             draw.line(
                 [self.cx - lid_width, upper_y, self.cx + lid_width, upper_y],
-                fill=(190, 145, 120, 255),
-                width=3,
+                fill=(186, 138, 112, 255), width=3,
             )
             draw.line(
                 [self.cx - lid_width, lower_y, self.cx + lid_width, lower_y],
-                fill=(190, 145, 120, 255),
-                width=3,
+                fill=(186, 138, 112, 255), width=3,
             )
 
             if close_t > 0.15:
@@ -194,4 +410,4 @@ class Eye:
                     ly2 = int(upper_y + math.sin(angle) * length)
                     draw.line([lx, upper_y, lx2, ly2], fill=lash_color, width=2)
 
-        return img
+        return canvas
