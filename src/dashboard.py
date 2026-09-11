@@ -31,7 +31,7 @@ class SettingsPanel(tk.Toplevel):
 
         # lower confidence = more sensitive (more detections, more false positives)
         self._slider(outer, "Confidence threshold (lower = more sensitive)",
-                     0.10, 0.95, settings.min_confidence,
+                     0.10, 0.95, settings.min_confidence, 0.01,
                      lambda v: setattr(settings, "min_confidence", float(v)))
 
         # lower min area = smaller objects tracked
