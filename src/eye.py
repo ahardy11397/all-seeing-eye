@@ -160,17 +160,24 @@ class Eye:
                         rng2.integers(5, 9), R * 0.06,
                         1, rng2.uniform(0.25, 0.45), 0.58)
 
-        # downsample for anti-aliased translucent vessels, then soften and tint
+        # downsample for anti-aliased translucent vessels, then soften and tint.
+        # Deep blood-red: replace color rather than tint — vessels get their own
+        # dark red hue mixed over the white, so they stay saturated and visible.
         cap = np.asarray(mask.resize((self.width, self.height), Image.Resampling.LANCZOS), dtype=float) / 255.0
         # a touch of blur so vessel edges are soft, sitting within the tissue
         cap = np.asarray(Image.fromarray((cap * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.8)), dtype=float) / 255.0
         # keep vessels out of the very center of the globe
         cap_dist = np.sqrt((xx - self.cx) ** 2 + (yy - self.cy) ** 2) / R
         cap *= np.clip((cap_dist - 0.38) / 0.15, 0, 1)
-        cap_strength = 19.0
-        r = np.clip(r + cap * cap_strength * 2.6, 0, 255)
-        g = np.clip(g - cap * cap_strength, 0, 255)
-        b = np.clip(b - cap * cap_strength * 1.1, 0, 255)
+
+        # vessel color: deep blood red
+        vessel_r = 168.0
+        vessel_g = 22.0
+        vessel_b = 30.0
+        blend = np.clip(cap * 1.6, 0.0, 0.92)  # cap at 92% so they stay translucent
+        r = r * (1.0 - blend) + vessel_r * blend
+        g = g * (1.0 - blend) + vessel_g * blend
+        b = b * (1.0 - blend) + vessel_b * blend
 
         alpha = (inside * 255).astype(np.uint8)
 
