@@ -29,6 +29,8 @@ class Detector:
 
         self._candidate_history: list[tuple[int, int, float]] = []
         self._vehicle_parked_until: float = 0.0
+        # tunable live from the settings panel
+        self.parked_drift_px: int = 8
 
     def _load_model(self):
         if self.model is None:
@@ -44,7 +46,7 @@ class Detector:
         total_shift = math.hypot(max(xs) - min(xs), max(ys) - min(ys))
 
         # If the vehicle center has barely moved across recent detections, it's parked
-        return total_shift < 8
+        return total_shift < self.parked_drift_px
 
     def detect(self, frame: np.ndarray) -> Detection | None:
         self._frame_count += 1

@@ -1,16 +1,106 @@
 from __future__ import annotations
 
 import time
+import tkinter as tk
 
 import cv2
-import numpy as np
-import tkinter as tk
 from PIL import Image, ImageTk
 
 from camera import Camera
 from config import settings
 from detector import Detector
 from eye import Eye
+
+
+class SettingsPanel(tk.Toplevel):
+    """Live-tunable detection + eye settings. Sliders write straight into
+    `settings`, so changes take effect on the next frame."""
+
+    def __init__(self, master, detector: Detector) -> None:
+        super().__init__(master)
+        self.title("Detection & Eye Settings")
+        self.configure(bg="#181818")
+        self.resizable(False, False)
+        self.detector = detector
+
+        outer = tk.Frame(self, bg="#181818", padx=14, pady=10)
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(outer, text="Detection sensitivity", fg="#fff", bg="#181818",
+                 font=("Arial", 12, "bold")).pack(anchor="w", pady=(0, 4))
+
+        # lower confidence = more sensitive (more detections, more false positives)
+        self._slider(outer, "Confidence threshold (lower = more sensitive)",
+                     0.10, 0.95, settings.min_confidence,
+                     lambda v: setattr(settings, "min_confidence", float(v)))
+
+        # lower min area = smaller objects tracked
+        self._slider(outer, "Min object size (px², lower = smaller objects)",
+                     500, 40000, settings.min_box_area, 200,
+                     lambda v: setattr(settings, "min_box_area", int(float(v))))
+
+        # lower required = faster lock-on, more jitter
+        self._slider(outer, "Frames to confirm detection",
+                     1, 10, settings.required_detections, 1,
+                     lambda v: setattr(settings, "required_detections", int(float(v))))
+
+        # detection every N frames — 1 = most responsive, most CPU
+        self._slider(outer, "Run detection every N frames",
+                     1, 10, settings.detection_interval, 1,
+                     lambda v: setattr(settings, "detection_interval", int(float(v))))
+
+        tk.Label(outer, text="Parked-vehicle rejection", fg="#fff", bg="#181818",
+                 font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 4))
+
+        self._slider(outer, "Parked cooldown (s)",
+                     5.0, 60.0, settings.parked_cooldown_s, 1.0,
+                     lambda v: setattr(settings, "parked_cooldown_s", float(v)))
+
+        self._slider(outer, "Max drift to count as parked (px)",
+                     2, 40, getattr(self.detector, "parked_drift_px", 8), 1,
+                     lambda v: setattr(self.detector, "parked_drift_px", int(float(v))))
+
+        tk.Label(outer, text="Eye animation", fg="#fff", bg="#181818",
+                 font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 4))
+
+        self._slider(outer, "Eye smoothing (higher = snappier)",
+                     0.05, 0.6, settings.smoothing, 0.01,
+                     lambda v: setattr(settings, "smoothing", float(v)))
+
+        btns = tk.Frame(outer, bg="#181818")
+        btns.pack(fill=tk.X, pady=(12, 0))
+        tk.Button(btns, text="Reset to defaults", command=self._reset).pack(side=tk.LEFT)
+
+    def _slider(self, parent, label, from_, to, current, resolution, command):
+        row = tk.Frame(parent, bg="#181818")
+        row.pack(fill=tk.X, pady=3)
+        val_var = tk.StringVar(value=self._fmt(current))
+
+        def on_move(v):
+            command(v)
+            val_var.set(self._fmt(float(v)))
+
+        tk.Label(row, text=label, fg="#ccc", bg="#181818", font=("Arial", 10)).pack(anchor="w")
+        srow = tk.Frame(row, bg="#181818")
+        srow.pack(fill=tk.X)
+        tk.Scale(srow, from_=from_, to=to, resolution=resolution, orient=tk.HORIZONTAL,
+                 command=on_move, length=260, bg="#181818", fg="#ccc",
+                 highlightthickness=0, showvalue=False).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Label(srow, textvariable=val_var, fg="#0f0", bg="#181818",
+                 font=("Arial", 10), width=8, anchor="e").pack(side=tk.RIGHT)
+
+    @staticmethod
+    def _fmt(v: float) -> str:
+        return f"{v:.2f}" if isinstance(v, float) and v < 10 else f"{int(round(v))}"
+
+    def _reset(self) -> None:
+        defaults = type(settings)()
+        for field in ("min_confidence", "min_box_area", "required_detections",
+                      "detection_interval", "parked_cooldown_s", "smoothing"):
+            setattr(settings, field, getattr(defaults, field))
+        self.detector.parked_drift_px = 8
+        self.destroy()
+        SettingsPanel(self.master, self.detector)
 
 
 class Dashboard:
@@ -21,6 +111,8 @@ class Dashboard:
 
         self.camera = Camera()
         self.detector = Detector()
+        self.settings_panel: SettingsPanel | None = None
+
         self.eye = Eye(settings.width, settings.height)
 
         self.fps_values = []
@@ -42,8 +134,11 @@ class Dashboard:
         bottom = tk.Frame(self.root, bg="#111")
         bottom.pack(fill=tk.X, padx=10, pady=10)
 
-        tk.Label(bottom, text="Simulated Eye", fg="white", bg="#111", font=("Arial", 14, "bold")).pack(anchor="w")
-        tk.Label(bottom, textvariable=self.eye_state, fg="#0ff", bg="#111", font=("Arial", 12)).pack(anchor="w")
+        tk.Label(bottom, text="Simulated Eye", fg="white", bg="#111", font=("Arial", 14, "bold")).pack(side=tk.LEFT)
+        tk.Label(bottom, textvariable=self.eye_state, fg="#0ff", bg="#111", font=("Arial", 12)).pack(side=tk.RIGHT)
+        tk.Button(bottom, text="⚙ Settings", command=self._toggle_settings,
+                  bg="#222", fg="white", activebackground="#333",
+                  relief=tk.FLAT, padx=10).pack(side=tk.RIGHT, padx=(0, 12))
 
         self.eye_canvas = tk.Canvas(self.root, width=settings.width, height=settings.height, bg="black", highlightthickness=0)
         self.eye_canvas.pack(padx=10, pady=5)
@@ -54,15 +149,29 @@ class Dashboard:
         self.cam_canvas.image = None
         self.eye_canvas.image = None
 
+    def _toggle_settings(self) -> None:
+        if self.settings_panel is not None and self.settings_panel.winfo_exists():
+            self.settings_panel.destroy()
+            self.settings_panel = None
+        else:
+            self.settings_panel = SettingsPanel(self.root, self.detector)
+
     def _draw_debug_overlay(self, detection) -> None:
         self.cam_canvas.delete("debug")
         if detection and detection.box:
             x1, y1, x2, y2 = detection.box
             self.cam_canvas.create_rectangle(x1, y1, x2, y2, outline="lime", width=2, tags="debug")
             self.cam_canvas.create_text(x1, y1 - 10, text=detection.label, fill="lime", anchor="sw", tags="debug")
-            self.detection_label.set(f"{detection.label} at ({detection.x}, {detection.y})")
+            parked = ""
+            if self.detector._vehicle_parked_until > time.time():
+                parked = " [parked]"
+            self.detection_label.set(f"{detection.label} ({detection.x}, {detection.y}){parked}")
         else:
-            self.detection_label.set("No detection")
+            if self.detector._vehicle_parked_until > time.time():
+                self.detection_label.set("Parked vehicle ignored")
+            else:
+                self.detection_label.set("No detection")
+
     def run(self) -> int:
         def tick() -> None:
             t0 = time.perf_counter()

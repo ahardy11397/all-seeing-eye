@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True)
+@dataclass
 class Settings:
     camera_url: str = "http://192.168.1.166:8080/video"
     width: int = 640
@@ -22,11 +22,14 @@ class Settings:
     min_confidence: float = 0.7
     min_box_area: int = 8000
     required_detections: int = 3
-    min_motion_pixels: int = 25
-    parked_frames: int = 12
     parked_cooldown_s: float = 20.0
     use_local_camera: bool = False
     local_camera_index: int = 0
+    # eye animation
+    eye_smoothing: float = 0.18
+    idle_mode_time_s: float = 3.5
+    # debug
+    debug_overlay: bool = True
 
 
 settings = Settings()
