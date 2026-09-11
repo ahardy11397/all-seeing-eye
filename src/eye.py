@@ -184,7 +184,37 @@ class Eye:
         sclera = np.dstack(
             [r.astype(np.uint8), g.astype(np.uint8), b.astype(np.uint8), alpha]
         )
-        self._sclera_img = Image.fromarray(sclera, "RGBA")
+        sclera_full = Image.fromarray(sclera, "RGBA")
+
+        # Split the sclera into two layers so vessels can move with the eye:
+        #   - base: shading/sheen only (static, doesn't move)
+        #   - vessels: the vascular texture (moves with the iris/globe rotation)
+        blend3 = blend[..., None]
+        vessel_color = np.dstack(
+            [np.full_like(r, vessel_r), np.full_like(g, vessel_g), np.full_like(b, vessel_b)]
+        )
+        # base = what the sclera looks like without vessels
+        base_np = np.asarray(sclera_full).astype(float)
+        scl_np = np.asarray(sclera_full).astype(float)
+        # remove vessels from base: invert the blend
+        # sclera = base*(1-blend) + vessel*blend  =>  base = (sclera - vessel*blend)/(1-blend)
+        denom = np.maximum(1.0 - blend, 0.08)
+        base_np[..., 0] = (scl_np[..., 0] - vessel_r * blend) / denom
+        base_np[..., 1] = (scl_np[..., 1] - vessel_g * blend) / denom
+        base_np[..., 2] = (scl_np[..., 2] - vessel_b * blend) / denom
+        base_np[..., 3] = alpha
+        self._sclera_base = Image.fromarray(np.clip(base_np, 0, 255).astype(np.uint8), "RGBA")
+
+        # vessel layer: alpha = vessel mask, color = blood red
+        vessel_arr = np.dstack(
+            [np.full_like(r, vessel_r).astype(np.uint8),
+             np.full_like(g, vessel_g).astype(np.uint8),
+             np.full_like(b, vessel_b).astype(np.uint8),
+             np.clip(blend * 255, 0, 255).astype(np.uint8)]
+        )
+        self._vessel_layer = Image.fromarray(vessel_arr, "RGBA")
+
+        self._sclera_img = sclera_full
         self._sclera_alpha = alpha
 
         # --- iris texture: radial gradient + fibers + limbal ring + flecks
@@ -400,7 +430,25 @@ class Eye:
         iris_cx = int(self.cx + dx * scale)
         iris_cy = int(self.cy + dy * scale)
 
-        canvas = self._sclera_img.copy()
+        canvas = self._sclera_base.copy()
+
+        # globe rotation: the whole eyeball (including vessels) rotates slightly
+        # in the direction of gaze, and shifts a fraction of the iris offset —
+        # like the conjunctiva sliding over the sclera. Always composite the
+        # vessel layer so it's present at center gaze too.
+        rot_deg = -dx * 0.004
+        vessel_shift_x = int(dx * scale * 0.22)
+        vessel_shift_y = int(dy * scale * 0.22)
+        vessel_layer = self._vessel_layer.transform(
+            (self.width, self.height),
+            Image.Transform.AFFINE,
+            (1.0, 0.0, -vessel_shift_x, 0.0, 1.0, -vessel_shift_y),
+            resample=Image.Resampling.BILINEAR,
+        )
+        if abs(rot_deg) > 0.05:
+            vessel_layer = vessel_layer.rotate(rot_deg, center=(self.cx, self.cy),
+                                               resample=Image.Resampling.BILINEAR)
+        canvas.alpha_composite(vessel_layer)
 
         # iris layer
         iris_layer = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
