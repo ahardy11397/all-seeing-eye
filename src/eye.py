@@ -75,37 +75,102 @@ class Eye:
         g = np.clip(g + sheen, 0, 255)
         b = np.clip(b + sheen * 0.9, 0, 255)
 
-        # faint capillaries: thin branching squiggles, barely visible, kept away
-        # from the center so they never read as cracks across the white
+        # blood vessels: smooth branching curves that grow from the outer edge
+        # inward, like real conjunctival vasculature. Paths are generated as
+        # gently curving splines (supersampled 2x for smoothness), tapered in
+        # width and alpha as they travel.
         rng2 = np.random.default_rng(42)
-        cap = np.zeros((self.height, self.width), dtype=float)
-        for _ in range(24):
+        SS = 2  # supersample factor for smooth vessel strokes
+        mask = Image.new("L", (self.width * SS, self.height * SS), 0)
+        mdraw = ImageDraw.Draw(mask)
+
+        def catmull_rom(points, samples_per_seg=8):
+            """Smooth spline through control points."""
+            if len(points) < 3:
+                return points
+            pts = [points[0]] + list(points) + [points[-1]]
+            out = []
+            for i in range(1, len(pts) - 2):
+                p0, p1, p2, p3 = pts[i - 1], pts[i], pts[i + 1], pts[i + 2]
+                for j in range(samples_per_seg):
+                    tt = j / samples_per_seg
+                    tt2, tt3 = tt * tt, tt * tt * tt
+                    x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * tt +
+                               (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * tt2 +
+                               (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * tt3)
+                    y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * tt +
+                               (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * tt2 +
+                               (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * tt3)
+                    out.append((x, y))
+            out.append(points[-1])
+            return out
+
+        def draw_vessel(px_, py_, heading, segs, seg_len, width_px, strength, depth_limit, depth=0):
+            """Build a curved vessel path (arc-like), then stroke it as a smooth tapered curve."""
+            ctrl = [(px_ * SS, py_ * SS)]
+            # each vessel gets a persistent curvature bias so it forms a smooth
+            # arc — this is what makes real vessels look curvy, not jagged
+            curvature = rng2.choice([-1.0, 1.0]) * rng2.uniform(0.10, 0.30)
+            for i in range(int(segs)):
+                heading += curvature + rng2.uniform(-0.06, 0.06)
+                px_ += math.cos(heading) * seg_len
+                py_ += math.sin(heading) * seg_len
+                pd = math.hypot(px_ - self.cx, py_ - self.cy) / R
+                if pd < depth_limit:
+                    break
+                ctrl.append((px_ * SS, py_ * SS))
+                # branch off partway through
+                if depth < 2 and 0 < i < int(segs) - 1 and rng2.uniform() < 0.3:
+                    draw_vessel(px_, py_, heading + rng2.choice([-1.0, 1.0]) * rng2.uniform(0.4, 0.8),
+                                max(2, int(segs) * 2 // 3), seg_len * 0.8,
+                                max(0, width_px - 1), strength * 0.7, depth_limit, depth + 1)
+
+            pts = catmull_rom(ctrl)
+            if len(pts) < 2:
+                return
+            n = len(pts)
+            for i in range(n - 1):
+                frac = i / n
+                # taper width toward zero so tips dissolve instead of stopping
+                w = max(1, int(round(width_px * SS * (1.0 - 0.85 * frac))))
+                # alpha falls off faster than width so the tip fades out
+                a = strength * max(0.05, (1.0 - 0.8 * frac) ** 1.5)
+                mdraw.line([pts[i], pts[i + 1]], fill=int(255 * min(1.0, a)), width=w, joint="curve")
+
+        # trunk vessels: start just outside the globe edge, push inward
+        for _ in range(9):
             ang = rng2.uniform(0, 2 * math.pi)
-            start_r = rng2.uniform(0.72, 0.98) * R
+            # favor the left/right corners like a real eye
+            if rng2.uniform() < 0.6:
+                ang = rng2.choice([rng2.uniform(-0.6, 0.6), rng2.uniform(math.pi - 0.6, math.pi + 0.6)])
+            start_r = rng2.uniform(1.04, 1.10) * R
             sx = self.cx + math.cos(ang) * start_r
             sy = self.cy + math.sin(ang) * start_r
-            steps = rng2.integers(6, 14)
-            px_, py_ = sx, sy
-            heading = ang + math.pi + rng2.uniform(-0.7, 0.7)
-            strength = rng2.uniform(0.3, 0.7)
-            for _ in range(steps):
-                heading += rng2.uniform(-0.6, 0.6)
-                px_ += math.cos(heading) * 2.5
-                py_ += math.sin(heading) * 2.5
-                ix, iy = int(px_), int(py_)
-                # fade out toward the middle of the globe
-                pd = math.hypot(px_ - self.cx, py_ - self.cy) / R
-                if pd < 0.55:
-                    continue
-                if 0 <= iy < self.height and 0 <= ix < self.width:
-                    fade = min(1.0, (pd - 0.55) / 0.2)
-                    cap[iy, ix] = strength * fade
-        # very light blur, keeping them thin and translucent
-        cap = np.asarray(Image.fromarray((cap * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6)), dtype=float) / 255.0
-        cap_strength = 11.0
-        r = np.clip(r + cap * cap_strength * 2.4, 0, 255)
+            draw_vessel(sx, sy, ang + math.pi + rng2.uniform(-0.3, 0.3),
+                        rng2.integers(9, 15), R * 0.075,
+                        2, rng2.uniform(0.5, 0.8), 0.40)
+
+        # fine vessels: shallower, thinner, more numerous
+        for _ in range(24):
+            ang = rng2.uniform(0, 2 * math.pi)
+            start_r = rng2.uniform(0.95, 1.08) * R
+            sx = self.cx + math.cos(ang) * start_r
+            sy = self.cy + math.sin(ang) * start_r
+            draw_vessel(sx, sy, ang + math.pi + rng2.uniform(-0.5, 0.5),
+                        rng2.integers(5, 9), R * 0.06,
+                        1, rng2.uniform(0.25, 0.45), 0.58)
+
+        # downsample for anti-aliased translucent vessels, then soften and tint
+        cap = np.asarray(mask.resize((self.width, self.height), Image.Resampling.LANCZOS), dtype=float) / 255.0
+        # a touch of blur so vessel edges are soft, sitting within the tissue
+        cap = np.asarray(Image.fromarray((cap * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.8)), dtype=float) / 255.0
+        # keep vessels out of the very center of the globe
+        cap_dist = np.sqrt((xx - self.cx) ** 2 + (yy - self.cy) ** 2) / R
+        cap *= np.clip((cap_dist - 0.38) / 0.15, 0, 1)
+        cap_strength = 19.0
+        r = np.clip(r + cap * cap_strength * 2.6, 0, 255)
         g = np.clip(g - cap * cap_strength, 0, 255)
-        b = np.clip(b - cap * cap_strength, 0, 255)
+        b = np.clip(b - cap * cap_strength * 1.1, 0, 255)
 
         alpha = (inside * 255).astype(np.uint8)
 
