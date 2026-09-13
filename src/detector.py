@@ -11,12 +11,13 @@ import time
 from config import settings
 
 
-@dataclass(frozen=True)
+@dataclass
 class Detection:
     x: int
     y: int
     label: str
     box: tuple[int, int, int, int] | None = None
+    conf: float = 0.0
 
 
 class Detector:
@@ -80,7 +81,7 @@ class Detector:
                     cy = int((y1 + y2) / 2)
                     cls = int(b.cls[0].item())
                     label = "person" if cls == 0 else "vehicle"
-                    candidate = Detection(cx, cy, label, box=(x1, y1, x2, y2))
+                    candidate = Detection(cx, cy, label, box=(x1, y1, x2, y2), conf=conf)
 
         if candidate:
             if candidate.label == "vehicle" and self._is_vehicle_parked(now):

@@ -29,6 +29,7 @@ class Settings:
     stream_port: int = 8000
     stream_fps: int = 30
     stream_jpeg_quality: int = 85
+    dashboard_port: int = 8090
     # eye animation
     eye_smoothing: float = 0.18
     idle_mode_time_s: float = 3.5

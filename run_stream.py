@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import math
 import sys
 import threading
 import time
@@ -16,7 +17,56 @@ from camera import Camera
 from config import settings
 from detector import Detector
 from eye import Eye
+from dashboard_server import make_dashboard_server, store
 from stream_server import broadcaster, make_server
+
+
+def _jpeg(pil: Image.Image, quality: int) -> bytes:
+    buf = io.BytesIO()
+    pil.convert("RGB").save(buf, format="JPEG", quality=quality)
+    return buf.getvalue()
+
+
+def _annotate_camera(frame, detection, eye, parked: bool):
+    """Camera frame with tracking box, label, and a crosshair where the eye looks."""
+    import numpy as np
+
+    vis = frame.copy()
+    h, w = vis.shape[:2]
+
+    if detection and detection.box:
+        x1, y1, x2, y2 = detection.box
+        color = (60, 220, 60)  # lime BGR
+        cv2.rectangle(vis, (x1, y1), (x2, y2), color, 2)
+        label = detection.label
+        if parked:
+            label += " [parked]"
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
+        ty = max(th + 6, y1 - 6)
+        cv2.rectangle(vis, (x1, ty - th - 6), (x1 + tw + 6, ty), color, -1)
+        cv2.putText(vis, label, (x1 + 3, ty - 4), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.55, (0, 0, 0), 1, cv2.LINE_AA)
+
+    # crosshair: where the projected eye is actually looking (iris center)
+    # eye coords are in settings.width x settings.height space; scale to frame
+    sx = w / settings.width
+    sy = h / settings.height
+    dx = eye.iris_x - eye.cx
+    dy = eye.iris_y - eye.cy
+    dist = math.hypot(dx, dy) or 1.0
+    scale = min(settings.max_pupil_offset / dist, 1.0)
+    look_x = int((eye.cx + dx * scale) * sx)
+    look_y = int((eye.cy + dy * scale) * sy)
+
+    color = (60, 200, 255)  # warm yellow BGR
+    gap = 10
+    length = 18
+    cv2.line(vis, (look_x - gap - length, look_y), (look_x - gap, look_y), color, 2)
+    cv2.line(vis, (look_x + gap, look_y), (look_x + gap + length, look_y), color, 2)
+    cv2.line(vis, (look_x, look_y - gap - length), (look_x, look_y - gap), color, 2)
+    cv2.line(vis, (look_x, look_y + gap), (look_x, look_y + gap + length), color, 2)
+    cv2.circle(vis, (look_x, look_y), 2, color, -1, cv2.LINE_AA)
+    return vis
 
 
 def main() -> int:
@@ -24,13 +74,21 @@ def main() -> int:
     detector = Detector()
     eye = Eye(settings.width, settings.height)
 
-    server = make_server(broadcaster, settings.stream_port)
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    server_thread.start()
-    print(f"Eye stream: http://0.0.0.0:{settings.stream_port}/  (open this on the Mi Box browser)")
+    # public stream for the Mi Box
+    stream_srv = make_server(broadcaster, settings.stream_port)
+    threading.Thread(target=stream_srv.serve_forever, daemon=True).start()
+
+    # local dashboard with previews + settings
+    dash_srv = make_dashboard_server(store, settings.dashboard_port, detector)
+    threading.Thread(target=dash_srv.serve_forever, daemon=True).start()
+
+    host_note = f"http://0.0.0.0:{settings.dashboard_port}/"
+    print(f"Dashboard: {host_note}   (open on this machine)")
+    print(f"Eye stream: http://0.0.0.0:{settings.stream_port}/  (open on the Mi Box)")
 
     frame_interval = 1.0 / max(1, settings.stream_fps)
     quality = settings.stream_jpeg_quality
+    fps_values: list[float] = []
 
     try:
         while True:
@@ -46,16 +104,41 @@ def main() -> int:
                 print(f"detection error: {exc}", file=sys.stderr)
                 detection = None
 
+            parked = detector._vehicle_parked_until > time.time()
+
             target_x = detection.x if detection else None
             target_y = detection.y if detection else None
             eye.update(target_x, target_y, time.time())
-            pil = eye.render()
+            eye_pil = eye.render()
 
-            buf = io.BytesIO()
-            pil.convert("RGB").save(buf, format="JPEG", quality=quality)
-            broadcaster.publish(buf.getvalue())
+            # public stream: plain eye, black background
+            broadcaster.publish(_jpeg(eye_pil, quality))
 
-            # keep pace with target fps
+            # dashboard: eye preview + annotated camera
+            cam_vis = _annotate_camera(frame, detection, eye, parked)
+            cam_pil = Image.fromarray(cv2.cvtColor(cam_vis, cv2.COLOR_BGR2RGB))
+            cam_pil = cam_pil.resize((settings.width, settings.height))
+
+            fps_values.append(1.0 / (time.perf_counter() - t0) if time.perf_counter() - t0 > 0 else 0)
+            if len(fps_values) > 30:
+                fps_values.pop(0)
+
+            store.publish(
+                _jpeg(eye_pil, 80),
+                _jpeg(cam_pil, 80),
+                {
+                    "fps": sum(fps_values) / len(fps_values),
+                    "detection": (
+                        {"label": detection.label, "x": detection.x, "y": detection.y,
+                         "box": list(detection.box),
+                         "conf": round(float(detection.conf), 2)}
+                        if detection else None
+                    ),
+                    "parked": parked,
+                    "iris": {"x": eye.iris_x, "y": eye.iris_y},
+                },
+            )
+
             elapsed = time.perf_counter() - t0
             if elapsed < frame_interval:
                 time.sleep(frame_interval - elapsed)
@@ -63,7 +146,8 @@ def main() -> int:
         pass
     finally:
         camera.release()
-        server.shutdown()
+        stream_srv.shutdown()
+        dash_srv.shutdown()
     return 0
 
 
