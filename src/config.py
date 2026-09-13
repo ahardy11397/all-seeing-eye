@@ -33,6 +33,7 @@ class Settings:
     # eye animation
     eye_smoothing: float = 0.18
     idle_mode_time_s: float = 3.5
+    fullscreen: bool = True
     # debug
     debug_overlay: bool = True
 
