@@ -530,4 +530,9 @@ class Eye:
                     ly2 = int(upper_y + math.sin(angle) * length)
                     draw.line([lx, upper_y, lx2, ly2], fill=lash_color, width=2)
 
-        return canvas
+        # solid black background outside the eyeball (so projectors/WebView
+        # never show transparent as white), and clip vessels that extend
+        # beyond the eyeball circle
+        out = Image.new("RGB", (self.width, self.height), (0, 0, 0))
+        out.paste(canvas, (0, 0), canvas)
+        return out
