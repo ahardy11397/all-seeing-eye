@@ -25,6 +25,10 @@ class Settings:
     parked_cooldown_s: float = 20.0
     use_local_camera: bool = False
     local_camera_index: int = 0
+    # streaming to display device (Mi Box / Android TV browser)
+    stream_port: int = 8000
+    stream_fps: int = 30
+    stream_jpeg_quality: int = 85
     # eye animation
     eye_smoothing: float = 0.18
     idle_mode_time_s: float = 3.5
