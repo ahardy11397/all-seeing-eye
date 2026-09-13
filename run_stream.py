@@ -47,16 +47,13 @@ def _annotate_camera(frame, detection, eye, parked: bool):
         cv2.putText(vis, label, (x1 + 3, ty - 4), cv2.FONT_HERSHEY_SIMPLEX,
                     0.55, (0, 0, 0), 1, cv2.LINE_AA)
 
-    # crosshair: where the projected eye is actually looking (iris center)
-    # eye coords are in settings.width x settings.height space; scale to frame
-    sx = w / settings.width
-    sy = h / settings.height
-    dx = eye.iris_x - eye.cx
-    dy = eye.iris_y - eye.cy
-    dist = math.hypot(dx, dy) or 1.0
-    scale = min(settings.max_pupil_offset / dist, 1.0)
-    look_x = int((eye.cx + dx * scale) * sx)
-    look_y = int((eye.cy + dy * scale) * sy)
+    # crosshair: gaze DIRECTION mapped across the full frame. The iris's
+    # physical travel is small (max_pupil_offset px), but full deflection in a
+    # direction means the eye is looking all the way that way — so normalize
+    # the gaze vector and map -1..1 onto the full camera view.
+    gx, gy = eye.gaze()
+    look_x = int((gx * 0.5 + 0.5) * (w - 1))
+    look_y = int((gy * 0.5 + 0.5) * (h - 1))
 
     color = (60, 200, 255)  # warm yellow BGR
     gap = 10

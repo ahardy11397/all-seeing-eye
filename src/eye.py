@@ -417,6 +417,17 @@ class Eye:
     # rendering                                                           #
     # ------------------------------------------------------------------ #
 
+    def gaze(self) -> tuple[float, float]:
+        """Normalized gaze direction, -1..1 on each axis, based on iris offset.
+
+        The iris physically travels at most max_pupil_offset px, but that full
+        deflection means the eye is looking all the way to that side — so the
+        normalized vector is what should be mapped onto the camera view.
+        """
+        gx = (self.iris_x - self.cx) / max(1, settings.max_pupil_offset)
+        gy = (self.iris_y - self.cy) / max(1, settings.max_pupil_offset)
+        return max(-1.0, min(1.0, gx)), max(-1.0, min(1.0, gy))
+
     def render(self) -> Image.Image:
         R = settings.eye_radius
         ir = settings.iris_radius
