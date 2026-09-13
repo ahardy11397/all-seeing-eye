@@ -383,7 +383,10 @@ class Eye:
 
     def update(self, target_x: int | None, target_y: int | None, now: float) -> None:
         if target_x is not None and target_y is not None:
-            tx = max(0, min(self.width, target_x))
+            # The camera looks outward at the street; the projected eye faces
+            # the viewer (outward). Viewer-left is camera-right, so mirror X.
+            # Y is not mirrored: camera-up is viewer-up for a normal projection.
+            tx = max(0, min(self.width, self.width - target_x))
             ty = max(0, min(self.height, target_y))
             self.idle_mode = "idle"
             self.idle_glance_started_at = None
