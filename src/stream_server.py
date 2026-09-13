@@ -42,26 +42,48 @@ class _Handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):  # noqa: N802
-        if self.path in ("/", "/index.html"):
+        path = self.path.split("?")[0]
+        if path in ("/", "/index.html"):
             self._serve_html()
-        elif self.path == "/stream":
+        elif path == "/stream":
             self._serve_stream()
-        elif self.path == "/snapshot":
+        elif path == "/snapshot":
             self._serve_snapshot()
         else:
             self.send_error(404)
 
     def _serve_html(self) -> None:
-        html = (
-            "<!DOCTYPE html><html><head><title>All-Seeing Eye</title>"
-            "<style>"
-            "html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden}"
-            "img{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);"
-            "max-width:100vw;max-height:100vh;}"
-            "</style></head><body>"
-            f'<img src="/stream?t={int(time.time())}">'
-            "</body></html>"
-        )
+        html = """<!DOCTYPE html><html><head><title>All-Seeing Eye</title>
+<style>
+html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden}
+#eye{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+max-width:100vw;max-height:100vh;}
+</style></head><body>
+<img id="eye" src="/snapshot">
+<script>
+// MJPEG streams don't work in Android WebView; poll fresh snapshots instead.
+var img = document.getElementById('eye');
+var last = 0;
+
+function refresh() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/snapshot?t=' + Date.now(), true);
+  xhr.responseType = 'blob';
+  xhr.onload = function() {
+    if (xhr.status === 200 && xhr.response.size > 0) {
+      var url = URL.createObjectURL(xhr.response);
+      img.src = url;
+      if (last) { URL.revokeObjectURL(last); }
+      last = url;
+    }
+    setTimeout(refresh, 40);
+  };
+  xhr.onerror = function() { setTimeout(refresh, 500); };
+  xhr.send();
+}
+refresh();
+</script>
+</body></html>"""
         data = html.encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
