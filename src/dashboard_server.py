@@ -279,6 +279,7 @@ refreshImage('cam', '/api/cam.jpg');
         data = html.encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
