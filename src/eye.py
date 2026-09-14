@@ -403,18 +403,7 @@ class Eye:
             self._next_dilation_change = now + random.uniform(2.0, 6.0)
         self.pupil_scale += (self._pupil_target - self.pupil_scale) * 0.03
 
-        blink_interval = settings.blink_interval_s
-        if self.idle_mode != "idle":
-            blink_interval = (blink_interval[0] * 0.6, blink_interval[1] * 0.7)
-
-        if self.blink_started_at is None and now >= self.next_blink_at:
-            self.blink_started_at = now
-            self.blink_duration = random.uniform(*settings.blink_duration_s)
-
-        if self.blink_started_at is not None:
-            if now - self.blink_started_at >= self.blink_duration:
-                self.blink_started_at = None
-                self.next_blink_at = now + random.uniform(*blink_interval)
+        # blinking disabled
 
     # ------------------------------------------------------------------ #
     # rendering                                                           #
