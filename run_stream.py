@@ -17,6 +17,7 @@ from camera import Camera
 from config import settings
 from detector import Detector
 from eye import Eye
+from monster_eye import MonsterEye
 from dashboard_server import make_dashboard_server, store
 from stream_server import broadcaster, make_server
 
@@ -89,6 +90,13 @@ def main() -> int:
 
     try:
         while True:
+            current_eye_type = getattr(settings, "eye_type", "human")
+            if (current_eye_type == "human" and type(eye).__name__ != "Eye") or                (current_eye_type == "monster" and type(eye).__name__ != "MonsterEye"):
+                if current_eye_type == "monster":
+                    eye = MonsterEye(settings.width, settings.height)
+                else:
+                    eye = Eye(settings.width, settings.height)
+
             t0 = time.perf_counter()
             frame = camera.read()
             if frame is None:

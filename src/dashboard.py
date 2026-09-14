@@ -10,6 +10,7 @@ from camera import Camera
 from config import settings
 from detector import Detector
 from eye import Eye
+from monster_eye import MonsterEye
 
 
 class SettingsPanel(tk.Toplevel):
@@ -60,8 +61,22 @@ class SettingsPanel(tk.Toplevel):
                      2, 40, getattr(self.detector, "parked_drift_px", 8), 1,
                      lambda v: setattr(self.detector, "parked_drift_px", int(float(v))))
 
-        tk.Label(outer, text="Eye animation", fg="#fff", bg="#181818",
+        tk.Label(outer, text="Eye style", fg="#fff", bg="#181818",
                  font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 4))
+
+        self.eye_type_var = tk.StringVar(value=getattr(settings, "eye_type", "human"))
+        
+        def on_eye_type_change(*args):
+            setattr(settings, "eye_type", self.eye_type_var.get())
+            
+        self.eye_type_var.trace_add("write", on_eye_type_change)
+        
+        dropdown = tk.OptionMenu(outer, self.eye_type_var, "human", "monster")
+        dropdown.config(bg="#181818", fg="#ccc", highlightthickness=0)
+        dropdown["menu"].config(bg="#181818", fg="#ccc")
+        dropdown.pack(anchor="w", pady=3)
+
+        tk.Label(outer, text="Eye animation", fg="#fff", bg="#181818", font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 4))
 
         self._slider(outer, "Eye smoothing (higher = snappier)",
                      0.05, 0.6, settings.smoothing, 0.01,
@@ -93,11 +108,12 @@ class SettingsPanel(tk.Toplevel):
     def _fmt(v: float) -> str:
         return f"{v:.2f}" if isinstance(v, float) and v < 10 else f"{int(round(v))}"
 
-    def _reset(self) -> None:
+def _reset(self) -> None:
         defaults = type(settings)()
         for field in ("min_confidence", "min_box_area", "required_detections",
                       "detection_interval", "parked_cooldown_s", "smoothing"):
             setattr(settings, field, getattr(defaults, field))
+        setattr(settings, "eye_type", "human")
         self.detector.parked_drift_px = 8
         self.destroy()
         SettingsPanel(self.master, self.detector)
@@ -174,6 +190,13 @@ class Dashboard:
 
     def run(self) -> int:
         def tick() -> None:
+            current_eye_type = getattr(settings, "eye_type", "human")
+            if (current_eye_type == "human" and type(self.eye).__name__ != "Eye") or                (current_eye_type == "monster" and type(self.eye).__name__ != "MonsterEye"):
+                if current_eye_type == "monster":
+                    self.eye = MonsterEye(settings.width, settings.height)
+                else:
+                    self.eye = Eye(settings.width, settings.height)
+
             t0 = time.perf_counter()
             frame = self.camera.read()
             if frame is None:
