@@ -19,6 +19,13 @@ class Detection:
     box: tuple[int, int, int, int] | None = None
     conf: float = 0.0
 
+class Track:
+    def __init__(self, cx, cy, box, label, now):
+        self.history = [(cx, cy, now)]
+        self.box = box
+        self.label = label
+        self.parked_until = 0.0
+        self.last_seen = now
 
 class Detector:
     def __init__(self) -> None:
@@ -28,32 +35,65 @@ class Detector:
         self._positive_count = 0
         self._negative_count = 0
 
-        self._candidate_history: list[tuple[int, int, float]] = []
-        self._parked_vehicles: list[tuple[tuple[int, int, int, int], float]] = []
-        # tunable live from the settings panel
+        self.tracks: list[Track] = []
         self.parked_drift_px: int = 8
 
     @property
     def _vehicle_parked_until(self) -> float:
-        if not self._parked_vehicles:
+        # Compatibility property: returns max parked_until of any track
+        if not self.tracks:
             return 0.0
-        return max(exp for box, exp in self._parked_vehicles)
+        parked_times = [t.parked_until for t in self.tracks if t.parked_until > 0]
+        return max(parked_times) if parked_times else 0.0
+
+    def _update_tracks(self, detections, now: float):
+        # detections is list of (cx, cy, label, box)
+        matched_indices = set()
+        
+        # simple greedy match
+        for track in self.tracks:
+            best_dist = 999999
+            best_idx = -1
+            for i, (cx, cy, label, box) in enumerate(detections):
+                if i in matched_indices or label != track.label:
+                    continue
+                # Center distance
+                dist = math.hypot(cx - track.history[-1][0], cy - track.history[-1][1])
+                if dist < 60 and dist < best_dist:
+                    best_dist = dist
+                    best_idx = i
+                    
+            if best_idx != -1:
+                cx, cy, label, box = detections[best_idx]
+                track.history.append((cx, cy, now))
+                # keep last 15 history points max
+                if len(track.history) > 15:
+                    track.history.pop(0)
+                track.box = box
+                track.last_seen = now
+                matched_indices.add(best_idx)
+                
+                # Check parked
+                if track.label == "vehicle" and len(track.history) >= 6:
+                    xs = [p[0] for p in track.history]
+                    ys = [p[1] for p in track.history]
+                    shift = math.hypot(max(xs) - min(xs), max(ys) - min(ys))
+                    if shift < self.parked_drift_px:
+                        track.parked_until = now + settings.parked_cooldown_s
+                        track.history.clear() # clear to avoid re-triggering constantly while parked
+            
+        # Add unmatched as new tracks
+        for i, (cx, cy, label, box) in enumerate(detections):
+            if i not in matched_indices:
+                self.tracks.append(Track(cx, cy, box, label, now))
+                
+        # Remove old tracks unseen for 2 seconds
+        self.tracks = [t for t in self.tracks if now - t.last_seen < 2.0]
 
     def _load_model(self):
         if self.model is None:
             from ultralytics import YOLO
             self.model = YOLO("yolov8n.pt")
-
-    def _is_vehicle_parked(self, now: float) -> bool:
-        if len(self._candidate_history) < 6:
-            return False
-
-        xs = [p[0] for p in self._candidate_history]
-        ys = [p[1] for p in self._candidate_history]
-        total_shift = math.hypot(max(xs) - min(xs), max(ys) - min(ys))
-
-        # If the vehicle center has barely moved across recent detections, it's parked
-        return total_shift < self.parked_drift_px
 
     def detect(self, frame: np.ndarray) -> Detection | None:
         self._frame_count += 1
@@ -61,56 +101,51 @@ class Detector:
             return self._last_detection
 
         now = time.time()
-        self._parked_vehicles = [(box, exp) for box, exp in self._parked_vehicles if now < exp]
-
         self._load_model()
         results = self.model(frame, verbose=False, classes=[0, 2, 5, 7])
 
-        candidate = None
+        # extract all raw valid detections
+        raw_detections = []
         if results:
             boxes = results[0].boxes
             if boxes is not None and len(boxes) > 0:
-                filtered = []
                 for b in boxes:
                     conf = float(b.conf[0].item())
                     x1, y1, x2, y2 = map(int, b.xyxy[0].tolist())
                     area = (x2 - x1) * (y2 - y1)
                     if conf >= settings.min_confidence and area >= settings.min_box_area:
-                        filtered.append((area, b, conf, x1, y1, x2, y2))
-
-                if filtered:
-                    filtered.sort(key=lambda t: t[0], reverse=True)
-                    for _, b, conf, x1, y1, x2, y2 in filtered:
                         cx = int((x1 + x2) / 2)
                         cy = int((y1 + y2) / 2)
-                        
-                        is_ignored = False
-                        for (px1, py1, px2, py2), exp in self._parked_vehicles:
-                            if px1 <= cx <= px2 and py1 <= cy <= py2:
-                                is_ignored = True
-                                break
-                                
-                        if is_ignored:
-                            continue
-
                         cls = int(b.cls[0].item())
                         label = "person" if cls == 0 else "vehicle"
-                        candidate = Detection(cx, cy, label, box=(x1, y1, x2, y2), conf=conf)
-                        break
+                        raw_detections.append({
+                            "area": area, "conf": conf, "box": (x1, y1, x2, y2),
+                            "cx": cx, "cy": cy, "label": label
+                        })
+                        
+        # Update tracks with these detections
+        track_inputs = [(d["cx"], d["cy"], d["label"], d["box"]) for d in raw_detections]
+        self._update_tracks(track_inputs, now)
+        
+        # Sort raw by area to find candidate
+        raw_detections.sort(key=lambda d: d["area"], reverse=True)
+        
+        candidate = None
+        for d in raw_detections:
+            # Find the track for this detection
+            track_for_d = None
+            for t in self.tracks:
+                if t.box == d["box"] and t.label == d["label"]:
+                    track_for_d = t
+                    break
+                    
+            if track_for_d and track_for_d.parked_until > now:
+                continue # ignore parked vehicles
+                
+            candidate = Detection(d["cx"], d["cy"], d["label"], box=d["box"], conf=d["conf"])
+            break
 
         if candidate:
-            if candidate.label == "vehicle" and self._is_vehicle_parked(now):
-                self._parked_vehicles.append((candidate.box, now + settings.parked_cooldown_s))
-                self._candidate_history.clear()
-                self._positive_count = 0
-                self._negative_count = 0
-                self._last_detection = None
-                return None
-
-            self._candidate_history.append((candidate.x, candidate.y, now))
-            if len(self._candidate_history) > 20:
-                self._candidate_history.pop(0)
-
             self._positive_count += 1
             self._negative_count = 0
             if self._positive_count >= settings.required_detections:
@@ -121,7 +156,6 @@ class Detector:
             self._positive_count = 0
             if self._negative_count >= settings.required_detections:
                 self._last_detection = None
-                self._candidate_history.clear()
                 return None
 
         return self._last_detection
