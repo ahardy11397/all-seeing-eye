@@ -29,9 +29,15 @@ class Detector:
         self._negative_count = 0
 
         self._candidate_history: list[tuple[int, int, float]] = []
-        self._vehicle_parked_until: float = 0.0
+        self._parked_vehicles: list[tuple[tuple[int, int, int, int], float]] = []
         # tunable live from the settings panel
         self.parked_drift_px: int = 8
+
+    @property
+    def _vehicle_parked_until(self) -> float:
+        if not self._parked_vehicles:
+            return 0.0
+        return max(exp for box, exp in self._parked_vehicles)
 
     def _load_model(self):
         if self.model is None:
@@ -55,9 +61,7 @@ class Detector:
             return self._last_detection
 
         now = time.time()
-        if self._vehicle_parked_until and now < self._vehicle_parked_until:
-            self._last_detection = None
-            return None
+        self._parked_vehicles = [(box, exp) for box, exp in self._parked_vehicles if now < exp]
 
         self._load_model()
         results = self.model(frame, verbose=False, classes=[0, 2, 5, 7])
@@ -76,16 +80,27 @@ class Detector:
 
                 if filtered:
                     filtered.sort(key=lambda t: t[0], reverse=True)
-                    _, b, conf, x1, y1, x2, y2 = filtered[0]
-                    cx = int((x1 + x2) / 2)
-                    cy = int((y1 + y2) / 2)
-                    cls = int(b.cls[0].item())
-                    label = "person" if cls == 0 else "vehicle"
-                    candidate = Detection(cx, cy, label, box=(x1, y1, x2, y2), conf=conf)
+                    for _, b, conf, x1, y1, x2, y2 in filtered:
+                        cx = int((x1 + x2) / 2)
+                        cy = int((y1 + y2) / 2)
+                        
+                        is_ignored = False
+                        for (px1, py1, px2, py2), exp in self._parked_vehicles:
+                            if px1 <= cx <= px2 and py1 <= cy <= py2:
+                                is_ignored = True
+                                break
+                                
+                        if is_ignored:
+                            continue
+
+                        cls = int(b.cls[0].item())
+                        label = "person" if cls == 0 else "vehicle"
+                        candidate = Detection(cx, cy, label, box=(x1, y1, x2, y2), conf=conf)
+                        break
 
         if candidate:
             if candidate.label == "vehicle" and self._is_vehicle_parked(now):
-                self._vehicle_parked_until = now + settings.parked_cooldown_s
+                self._parked_vehicles.append((candidate.box, now + settings.parked_cooldown_s))
                 self._candidate_history.clear()
                 self._positive_count = 0
                 self._negative_count = 0

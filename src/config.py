@@ -19,8 +19,8 @@ class Settings:
     idle_glance_interval_s: tuple[float, float] = (1.2, 3.5)
     idle_glance_duration_s: tuple[float, float] = (1.2, 2.8)
     detection_interval: int = 3
-    min_confidence: float = 0.7
-    min_box_area: int = 8000
+    min_confidence: float = 0.5
+    min_box_area: int = 1500
     required_detections: int = 3
     parked_cooldown_s: float = 20.0
     use_local_camera: bool = False
