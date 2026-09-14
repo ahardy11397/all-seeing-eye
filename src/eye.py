@@ -495,44 +495,6 @@ class Eye:
         arr[..., 3] = np.minimum(arr[..., 3], self._sclera_alpha)
         canvas = Image.fromarray(arr, "RGBA")
 
-        # eyelids + lashes while blinking
-        if self.blink_started_at is not None:
-            t = min(1.0, (time.time() - self.blink_started_at) / self.blink_duration)
-            close_t = math.sin(t * math.pi)
-            lid_width = R + 14
-            upper_y = int(self.cy - 6 + close_t * (R - 2))
-            lower_y = int(self.cy + 6 - close_t * (R - 2))
-
-            draw = ImageDraw.Draw(canvas)
-            draw.rectangle(
-                [self.cx - lid_width, self.cy - R - 8, self.cx + lid_width, upper_y],
-                fill=(224, 174, 142, 255),
-            )
-            draw.rectangle(
-                [self.cx - lid_width, lower_y, self.cx + lid_width, self.cy + R + 8],
-                fill=(216, 164, 132, 255),
-            )
-            draw.line(
-                [self.cx - lid_width, upper_y, self.cx + lid_width, upper_y],
-                fill=(186, 138, 112, 255), width=3,
-            )
-            draw.line(
-                [self.cx - lid_width, lower_y, self.cx + lid_width, lower_y],
-                fill=(186, 138, 112, 255), width=3,
-            )
-
-            if close_t > 0.15:
-                lash_color = (40, 20, 10, 255)
-                lash_count = 14
-                for i in range(lash_count + 1):
-                    frac = i / lash_count
-                    lx = int(self.cx - lid_width + frac * lid_width * 2)
-                    length = int(6 + 4 * math.sin(frac * math.pi))
-                    angle = -math.pi / 2 + (frac - 0.5) * 0.8
-                    lx2 = int(lx + math.cos(angle) * length)
-                    ly2 = int(upper_y + math.sin(angle) * length)
-                    draw.line([lx, upper_y, lx2, ly2], fill=lash_color, width=2)
-
         # solid black background outside the eyeball (so projectors/WebView
         # never show transparent as white), and clip vessels that extend
         # beyond the eyeball circle
