@@ -18,6 +18,8 @@ from config import settings
 from detector import Detector
 from eye import Eye
 from monster_eye import MonsterEye
+from zombie_eye import ZombieEye
+from dragon_eye import DragonEye
 from dashboard_server import make_dashboard_server, store
 from stream_server import broadcaster, make_server
 
@@ -91,9 +93,16 @@ def main() -> int:
     try:
         while True:
             current_eye_type = getattr(settings, "eye_type", "human")
-            if (current_eye_type == "human" and type(eye).__name__ != "Eye") or                (current_eye_type == "monster" and type(eye).__name__ != "MonsterEye"):
+            if (current_eye_type == "human" and type(eye).__name__ != "Eye") or \
+               (current_eye_type == "monster" and type(eye).__name__ != "MonsterEye") or \
+               (current_eye_type == "zombie" and type(eye).__name__ != "ZombieEye") or \
+               (current_eye_type == "dragon" and type(eye).__name__ != "DragonEye"):
                 if current_eye_type == "monster":
                     eye = MonsterEye(settings.width, settings.height)
+                elif current_eye_type == "zombie":
+                    eye = ZombieEye(settings.width, settings.height)
+                elif current_eye_type == "dragon":
+                    eye = DragonEye(settings.width, settings.height)
                 else:
                     eye = Eye(settings.width, settings.height)
 

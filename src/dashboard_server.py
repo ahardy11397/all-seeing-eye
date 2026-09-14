@@ -179,6 +179,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
       <select id="eye_type" style="width: 100%; padding: 4px; background: #202124; color: #e8eaed; border: 1px solid #5f6368; border-radius: 4px;">
         <option value="human">Human (Default)</option>
         <option value="monster">Monster</option>
+        <option value="zombie">Zombie</option>
+        <option value="dragon">Dragon</option>
       </select>
     </div>
     <div class="ctl"><label>Min confidence <output id="o_min_confidence"></output></label>
