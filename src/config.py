@@ -14,6 +14,8 @@ class Settings:
     pupil_radius: int = 28
     max_pupil_offset: int = 45
     smoothing: float = 0.18
+    blink_enabled: bool = False
+    blink_interval_s: tuple[float, float] = (2.0, 8.0)
     blink_interval_s: tuple[float, float] = (8.0, 25.0)
     blink_duration_s: tuple[float, float] = (0.12, 0.25)
     idle_glance_interval_s: tuple[float, float] = (1.2, 3.5)
@@ -33,6 +35,8 @@ class Settings:
     # eye animation
     eye_type: str = "human"
     eye_smoothing: float = 0.18
+    blink_enabled: bool = False
+    blink_interval_s: tuple[float, float] = (2.0, 8.0)
     idle_mode_time_s: float = 3.5
     fullscreen: bool = True
     # debug

@@ -69,6 +69,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                       "eye_smoothing"}
         float_fields = {"min_confidence", "parked_cooldown_s", "smoothing"}
         str_fields = {"eye_type"}
+        bool_fields = {"blink_enabled"}
         applied = {}
         for key, value in updates.items():
             if key in int_fields:
@@ -80,6 +81,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
             elif key in str_fields:
                 setattr(settings, key, str(value))
                 applied[key] = str(value)
+            elif key in bool_fields:
+                setattr(settings, key, bool(value))
+                applied[key] = bool(value)
             elif key == "parked_drift_px":
                 self.server.detector.parked_drift_px = int(float(value))  # type: ignore[attr-defined]
                 applied[key] = int(float(value))
@@ -118,6 +122,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "parked_drift_px": getattr(self.server.detector, "parked_drift_px", 8),  # type: ignore[attr-defined]
                 "smoothing": settings.smoothing,
                 "eye_type": getattr(settings, "eye_type", "human"),
+                "blink_enabled": getattr(settings, "blink_enabled", False),
             },
         }
         body = json.dumps(payload).encode()
@@ -197,6 +202,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
       <input type="range" id="parked_drift_px" min="2" max="40" step="1"></div>
     <div class="ctl"><label>Eye smoothing <output id="o_smoothing"></output></label>
       <input type="range" id="smoothing" min="0.05" max="0.6" step="0.01"></div>
+    <div class="ctl" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <label for="blink_enabled" style="margin: 0; display: inline;">Enable random blinking</label>
+      <input type="checkbox" id="blink_enabled" style="width: auto;">
+    </div>
     <button class="btn" id="reset">Reset to defaults</button>
     <div class="hint">Changes apply instantly on the next frame.</div>
   </div>
@@ -205,6 +214,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 const FIELDS = ['min_confidence','min_box_area','required_detections','detection_interval',
                 'parked_cooldown_s','parked_drift_px','smoothing'];
 const STR_FIELDS = ['eye_type'];
+const BOOL_FIELDS = ['blink_enabled'];
 
 function fmt(v) { return (typeof v === 'number' && v < 10) ? v.toFixed(2) : Math.round(v); }
 
@@ -226,6 +236,13 @@ fetch('/api/state').then(r => r.json()).then(s => {
       push({[f]: el.value});
     });
   }
+  for (const f of BOOL_FIELDS) {
+    const el = document.getElementById(f);
+    el.checked = s.settings[f];
+    el.addEventListener('change', () => {
+      push({[f]: el.checked});
+    });
+  }
 });
 
 let pushTimer = null;
@@ -240,7 +257,7 @@ function push(patch) {
 document.getElementById('reset').onclick = () => {
   const defaults = {min_confidence: 0.5, min_box_area: 1500, required_detections: 3,
                     detection_interval: 3, parked_cooldown_s: 20, parked_drift_px: 25,
-                    smoothing: 0.18, eye_type: 'human'};
+                    smoothing: 0.18, eye_type: 'human', blink_enabled: false};
   push(defaults);
   for (const f of FIELDS) {
     document.getElementById(f).value = defaults[f];
@@ -248,6 +265,9 @@ document.getElementById('reset').onclick = () => {
   }
   for (const f of STR_FIELDS) {
     document.getElementById(f).value = defaults[f];
+  }
+  for (const f of BOOL_FIELDS) {
+    document.getElementById(f).checked = defaults[f];
   }
 };
 

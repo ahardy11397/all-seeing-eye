@@ -21,6 +21,7 @@ class ZombieEye:
         self.next_blink_at = self._next_blink_time()
         self.blink_started_at: float | None = None
         self.blink_duration: float = 0.0
+        self.blink_factor: float = 0.0
 
         self.idle_mode = "idle"  # idle | glance | scan
         self.idle_scan_angle = 0.0
@@ -400,7 +401,24 @@ class ZombieEye:
             self._next_dilation_change = now + random.uniform(2.0, 6.0)
         self.pupil_scale += (self._pupil_target - self.pupil_scale) * 0.03
 
-        # blinking disabled
+        if getattr(settings, "blink_enabled", False):
+            if self.blink_started_at is None:
+                if now >= self.next_blink_at:
+                    self.blink_started_at = now
+                    self.blink_duration = random.uniform(0.15, 0.35)
+            
+            if self.blink_started_at is not None:
+                elapsed = now - self.blink_started_at
+                if elapsed >= self.blink_duration:
+                    self.blink_started_at = None
+                    self.next_blink_at = self._next_blink_time()
+                    self.blink_factor = 0.0
+                else:
+                    progress = elapsed / self.blink_duration
+                    # power curve to make it stay closed a tiny bit longer
+                    self.blink_factor = math.sin(progress * math.pi) ** 0.8
+        else:
+            self.blink_factor = 0.0
 
     # ------------------------------------------------------------------ #
     # rendering                                                           #
@@ -497,4 +515,14 @@ class ZombieEye:
         # beyond the eyeball circle
         out = Image.new("RGB", (self.width, self.height), (0, 0, 0))
         out.paste(canvas, (0, 0), canvas)
+        
+        if self.blink_factor > 0.0:
+            odraw = ImageDraw.Draw(out)
+            lid_r = R * 1.5
+            top_y_center = self.cy - R - lid_r + (R * 1.1) * self.blink_factor
+            odraw.ellipse([self.cx - lid_r, top_y_center - lid_r, self.cx + lid_r, top_y_center + lid_r], fill=(0, 0, 0))
+            
+            bot_y_center = self.cy + R + lid_r - (R * 0.9) * self.blink_factor
+            odraw.ellipse([self.cx - lid_r, bot_y_center - lid_r, self.cx + lid_r, bot_y_center + lid_r], fill=(0, 0, 0))
+
         return out
