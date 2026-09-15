@@ -83,7 +83,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 elif action == "iso": setattr(settings, "cam_gain", v)
                 elif action == "night_vision_average": setattr(settings, "cam_night_vision_exposure", v)
                 elif action == "night_vision_gain": setattr(settings, "cam_night_vision_gain", v)
-                elif action == "night_vision": setattr(settings, "cam_night", bool(val))
+                elif action == "night_vision": setattr(settings, "cam_night", val is True or val == "on")
                 
                 # Prerequisites
                 if action in ["exposure_ns", "iso"]:
@@ -94,7 +94,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if action == "focus":
                     requests.get(f"{base_url}/focus", timeout=2)
                 elif action == "torch":
-                    requests.get(f"{base_url}/settings/torch?set=on" if val else f"{base_url}/settings/torch?set=off", timeout=2)
+                    requests.get(f"{base_url}/enabletorch" if val else f"{base_url}/disabletorch", timeout=2)
                 elif action == "zoom":
                     # IP Webcam zoom is 100 to 1000
                     z = int(100 + v * 9.0)
@@ -120,7 +120,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     # Map 0-100 to 1-10
                     requests.get(f"{base_url}/settings/night_vision_average?set={max(1, int(v / 10.0))}", timeout=2)
                 elif action == "night_vision":
-                    requests.get(f"{base_url}/settings/night_vision?set=on" if val else f"{base_url}/settings/night_vision?set=off", timeout=2)
+                    is_on = (val is True or val == "on")
+                    requests.get(f"{base_url}/settings/night_vision?set=on" if is_on else f"{base_url}/settings/night_vision?set=off", timeout=2)
                 else:
                     requests.get(f"{base_url}/settings/{action}?set={val}", timeout=2)
             except Exception as e:
