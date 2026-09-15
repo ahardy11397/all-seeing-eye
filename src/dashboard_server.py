@@ -239,7 +239,7 @@ function push(patch) {
 
 document.getElementById('reset').onclick = () => {
   const defaults = {min_confidence: 0.5, min_box_area: 1500, required_detections: 3,
-                    detection_interval: 3, parked_cooldown_s: 20, parked_drift_px: 8,
+                    detection_interval: 3, parked_cooldown_s: 20, parked_drift_px: 25,
                     smoothing: 0.18, eye_type: 'human'};
   push(defaults);
   for (const f of FIELDS) {

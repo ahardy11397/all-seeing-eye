@@ -36,7 +36,7 @@ class Detector:
         self._negative_count = 0
 
         self.tracks: list[Track] = []
-        self.parked_drift_px: int = 8
+        self.parked_drift_px: int = 25
 
     @property
     def _vehicle_parked_until(self) -> float:
@@ -59,7 +59,7 @@ class Detector:
                     continue
                 # Center distance
                 dist = math.hypot(cx - track.history[-1][0], cy - track.history[-1][1])
-                if dist < 60 and dist < best_dist:
+                if dist < 120 and dist < best_dist:
                     best_dist = dist
                     best_idx = i
                     
@@ -80,7 +80,9 @@ class Detector:
                     shift = math.hypot(max(xs) - min(xs), max(ys) - min(ys))
                     if shift < self.parked_drift_px:
                         track.parked_until = now + settings.parked_cooldown_s
-                        track.history.clear() # clear to avoid re-triggering constantly while parked
+                        track.history = [track.history[-1]] # keep last position
+                    else:
+                        track.parked_until = 0.0
             
         # Add unmatched as new tracks
         for i, (cx, cy, label, box) in enumerate(detections):
