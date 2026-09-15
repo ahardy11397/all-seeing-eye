@@ -16,6 +16,16 @@ class Settings:
     smoothing: float = 0.18
     blink_enabled: bool = False
     blink_interval_s: tuple[float, float] = (2.0, 8.0)
+    
+    # Camera controls (0-100 sliders)
+    cam_zoom: int = 0
+    cam_focus_distance: int = 0
+    cam_exposure: int = 50
+    cam_gain: int = 50
+    cam_night_vision_exposure: int = 50
+    cam_night_vision_gain: int = 50
+    cam_night: bool = False
+
     blink_interval_s: tuple[float, float] = (8.0, 25.0)
     blink_duration_s: tuple[float, float] = (0.12, 0.25)
     idle_glance_interval_s: tuple[float, float] = (1.2, 3.5)
@@ -37,6 +47,16 @@ class Settings:
     eye_smoothing: float = 0.18
     blink_enabled: bool = False
     blink_interval_s: tuple[float, float] = (2.0, 8.0)
+    
+    # Camera controls (0-100 sliders)
+    cam_zoom: int = 0
+    cam_focus_distance: int = 0
+    cam_exposure: int = 50
+    cam_gain: int = 50
+    cam_night_vision_exposure: int = 50
+    cam_night_vision_gain: int = 50
+    cam_night: bool = False
+
     idle_mode_time_s: float = 3.5
     fullscreen: bool = True
     # debug
