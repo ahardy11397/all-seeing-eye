@@ -152,11 +152,15 @@ def main() -> int:
             frame = cam_mgr.get_frame()
             
             if frame is not None:
-                try:
-                    detection = detector.detect(frame)
-                except Exception as exc:
-                    print(f"detection error: {exc}", file=sys.stderr)
+                if getattr(settings, "tracking_enabled", True):
+                    try:
+                        detection = detector.detect(frame)
+                    except Exception as exc:
+                        print(f"detection error: {exc}", file=sys.stderr)
+                        detection = None
+                else:
                     detection = None
+                    detector._last_detection = None  # Clear history so it doesn't get stuck
                 parked = getattr(detector, "_vehicle_parked_until", 0) > time.time()
                 target_x = detection.x if detection else None
                 target_y = detection.y if detection else None

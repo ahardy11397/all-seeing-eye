@@ -18,6 +18,7 @@ class Settings:
     blink_enabled: bool = False
     blink_interval_s: tuple[float, float] = (2.0, 8.0)
     blink_duration_s: tuple[float, float] = (0.12, 0.25)
+    tracking_enabled: bool = True
     idle_glance_interval_s: tuple[float, float] = (1.2, 3.5)
     idle_glance_duration_s: tuple[float, float] = (1.2, 2.8)
     

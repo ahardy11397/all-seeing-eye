@@ -147,7 +147,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         float_fields = {"min_confidence", "parked_cooldown_s", "smoothing"}
         str_fields = {"eye_type"}
-        bool_fields = {"blink_enabled", "cam_night"}
+        bool_fields = {"blink_enabled", "cam_night", "tracking_enabled"}
         int_fields = {"cam_zoom", "cam_focus_distance", "cam_exposure", "cam_gain", "cam_night_vision_exposure", "cam_night_vision_gain", "min_box_area", "required_detections", "detection_interval", "parked_drift_px"}
         applied = {}
         for key, value in updates.items():
@@ -203,6 +203,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "smoothing": settings.smoothing,
                 "eye_type": getattr(settings, "eye_type", "human"),
                 "blink_enabled": getattr(settings, "blink_enabled", False),
+                "tracking_enabled": getattr(settings, "tracking_enabled", True),
                 "cam_night": getattr(settings, "cam_night", False),
                 "cam_zoom": getattr(settings, "cam_zoom", 0),
                 "cam_focus_distance": getattr(settings, "cam_focus_distance", 0),
@@ -293,6 +294,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
       <label for="blink_enabled" style="margin: 0; display: inline;">Enable random blinking</label>
       <input type="checkbox" id="blink_enabled" style="width: auto;">
     </div>
+    <div class="ctl" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <label for="tracking_enabled" style="margin: 0; display: inline;">Enable Motion Tracking (YOLO)</label>
+      <input type="checkbox" id="tracking_enabled" style="width: auto;">
+    </div>
     <button class="btn" id="reset">Reset to defaults</button>
     <div class="hint">Changes apply instantly on the next frame.</div>
   </div>
@@ -337,7 +342,7 @@ const CAM_SLIDERS = [
 const FIELDS = ['min_confidence','min_box_area','required_detections','detection_interval',
                 'parked_cooldown_s','parked_drift_px','smoothing'];
 const STR_FIELDS = ['eye_type'];
-const BOOL_FIELDS = ['blink_enabled'];
+const BOOL_FIELDS = ['blink_enabled', 'tracking_enabled'];
 
 function fmt(v) { return (typeof v === 'number' && v < 10) ? v.toFixed(2) : Math.round(v); }
 
@@ -394,7 +399,7 @@ function push(patch) {
 document.getElementById('reset').onclick = () => {
   const defaults = {min_confidence: 0.5, min_box_area: 1500, required_detections: 3,
                     detection_interval: 3, parked_cooldown_s: 20, parked_drift_px: 25,
-                    smoothing: 0.18, eye_type: 'human', blink_enabled: false};
+                    smoothing: 0.18, eye_type: 'human', blink_enabled: false, tracking_enabled: true};
   push(defaults);
   for (const f of FIELDS) {
     document.getElementById(f).value = defaults[f];
