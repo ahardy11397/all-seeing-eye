@@ -38,7 +38,7 @@
     "stream_fps": 30,
     "stream_jpeg_quality": 85,
     "dashboard_port": 8090,
-    "eye_type": "creepy_figure",
+    "eye_type": "bug",
     "cam_zoom": 0,
     "cam_focus_distance": 6,
     "cam_exposure": 0,
