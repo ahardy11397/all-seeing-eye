@@ -1,7 +1,8 @@
 with open("src/config.py", "r") as f:
-    content = f.read()
+    text = f.read()
 
-content = content.replace("smoothing: float = 0.18", "smoothing: float = 0.18\n    blink_enabled: bool = False\n    blink_interval_s: tuple[float, float] = (2.0, 8.0)")
-
-with open("src/config.py", "w") as f:
-    f.write(content)
+import re
+if "tracking_enabled" not in text:
+    text = text.replace("    blink_duration_s: tuple[float, float] = (0.12, 0.25)\n", "    blink_duration_s: tuple[float, float] = (0.12, 0.25)\n    tracking_enabled: bool = True\n")
+    with open("src/config.py", "w") as f:
+        f.write(text)
