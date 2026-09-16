@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import math
+import requests
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -58,7 +60,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/camera":
             length = int(self.headers.get("Content-Length", 0))
             try:
-                import json
                 cmd = json.loads(self.rfile.read(length))
             except json.JSONDecodeError:
                 self.send_error(400)
@@ -68,12 +69,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             action = cmd.get("action")
             
             try:
-                import requests
                 val = cmd.get("value")
                 
 
 
-                import math
                 v = int(float(val)) if val is not None else 0
                 
                 # Update persistent settings so UI doesn't reset on refresh
@@ -379,6 +378,7 @@ fetch('/api/state').then(r => r.json()).then(s => {
   
   if (s.settings.cam_night !== undefined) {
       nightState = s.settings.cam_night;
+      updateNightBtn();
   }
 });
 
@@ -418,13 +418,27 @@ function camCmd(action, value=null) {
   });
 }
 document.getElementById('cam_focus').onclick = () => camCmd('focus');
-document.getElementById('cam_torch').onclick = () => {
+const btnTorch = document.getElementById('cam_torch');
+function updateTorchBtn() {
+  btnTorch.textContent = torchState ? 'Flash: ON' : 'Flash: OFF';
+  btnTorch.style.background = torchState ? '#8ab4f8' : '#5f6368';
+  btnTorch.style.color = torchState ? '#000' : '#fff';
+}
+btnTorch.onclick = () => {
   torchState = !torchState;
-  camCmd('torch', torchState);
+  updateTorchBtn();
+  camCmd('torch', torchState ? 'on' : 'off');
 };
 
-document.getElementById('cam_night').onclick = () => {
+const btnNight = document.getElementById('cam_night');
+function updateNightBtn() {
+  btnNight.textContent = nightState ? 'Night Mode: ON' : 'Night Mode: OFF';
+  btnNight.style.background = nightState ? '#8ab4f8' : '#5f6368';
+  btnNight.style.color = nightState ? '#000' : '#fff';
+}
+btnNight.onclick = () => {
   nightState = !nightState;
+  updateNightBtn();
   camCmd('night_vision', nightState ? 'on' : 'off');
 };
 
