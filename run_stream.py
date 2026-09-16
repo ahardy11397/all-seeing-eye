@@ -20,6 +20,10 @@ from eye import Eye
 from monster_eye import MonsterEye
 from zombie_eye import ZombieEye
 from dragon_eye import DragonEye
+from snake_eye import SnakeEye
+from spider_eye import SpiderEye
+from bug_eye import BugEye
+from creepy_figure import CreepyFigure
 from dashboard_server import make_dashboard_server, store
 from stream_server import broadcaster, make_server
 
@@ -136,15 +140,23 @@ def main() -> int:
         cam_mgr = CameraManager()
         while True:
             current_eye_type = getattr(settings, "eye_type", "human")
-            if (current_eye_type == "human" and type(eye).__name__ != "Eye") or                (current_eye_type == "monster" and type(eye).__name__ != "MonsterEye") or                (current_eye_type == "zombie" and type(eye).__name__ != "ZombieEye") or                (current_eye_type == "dragon" and type(eye).__name__ != "DragonEye"):
-                if current_eye_type == "monster":
-                    eye = MonsterEye(settings.width, settings.height)
-                elif current_eye_type == "zombie":
-                    eye = ZombieEye(settings.width, settings.height)
-                elif current_eye_type == "dragon":
-                    eye = DragonEye(settings.width, settings.height)
-                else:
-                    eye = Eye(settings.width, settings.height)
+            if type(eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure") != current_eye_type and not (current_eye_type == "human" and type(eye).__name__ == "Eye"):
+
+                if current_eye_type == "monster": eye = MonsterEye(settings.width, settings.height)
+
+                elif current_eye_type == "zombie": eye = ZombieEye(settings.width, settings.height)
+
+                elif current_eye_type == "dragon": eye = DragonEye(settings.width, settings.height)
+
+                elif current_eye_type == "snake": eye = SnakeEye(settings.width, settings.height)
+
+                elif current_eye_type == "spider": eye = SpiderEye(settings.width, settings.height)
+
+                elif current_eye_type == "bug": eye = BugEye(settings.width, settings.height)
+
+                elif current_eye_type == "creepy_figure": eye = CreepyFigure(settings.width, settings.height)
+
+                else: eye = Eye(settings.width, settings.height)
 
             t0 = time.perf_counter()
             frame = None

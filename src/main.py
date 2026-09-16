@@ -14,6 +14,10 @@ from eye import Eye
 from monster_eye import MonsterEye
 from zombie_eye import ZombieEye
 from dragon_eye import DragonEye
+from snake_eye import SnakeEye
+from spider_eye import SpiderEye
+from bug_eye import BugEye
+from creepy_figure import CreepyFigure
 from projector import Projector
 
 
@@ -43,18 +47,23 @@ def main() -> int:
     def tick() -> None:
         nonlocal eye, projector
         current_eye_type = getattr(settings, "eye_type", "human")
-        if (current_eye_type == "human" and type(eye).__name__ != "Eye") or \
-           (current_eye_type == "monster" and type(eye).__name__ != "MonsterEye") or \
-           (current_eye_type == "zombie" and type(eye).__name__ != "ZombieEye") or \
-           (current_eye_type == "dragon" and type(eye).__name__ != "DragonEye"):
-            if current_eye_type == "monster":
-                eye = MonsterEye(width, height)
-            elif current_eye_type == "zombie":
-                eye = ZombieEye(width, height)
-            elif current_eye_type == "dragon":
-                eye = DragonEye(width, height)
-            else:
-                eye = Eye(width, height)
+        if type(eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure") != current_eye_type and not (current_eye_type == "human" and type(eye).__name__ == "Eye"):
+
+            if current_eye_type == "monster": eye = MonsterEye(width, height)
+
+            elif current_eye_type == "zombie": eye = ZombieEye(width, height)
+
+            elif current_eye_type == "dragon": eye = DragonEye(width, height)
+
+            elif current_eye_type == "snake": eye = SnakeEye(width, height)
+
+            elif current_eye_type == "spider": eye = SpiderEye(width, height)
+
+            elif current_eye_type == "bug": eye = BugEye(width, height)
+
+            elif current_eye_type == "creepy_figure": eye = CreepyFigure(width, height)
+
+            else: eye = Eye(width, height)
             projector = Projector(eye)
 
         t0 = time.perf_counter()

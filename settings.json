@@ -17,6 +17,7 @@
         0.12,
         0.25
     ],
+    "tracking_enabled": false,
     "idle_glance_interval_s": [
         1.2,
         3.5

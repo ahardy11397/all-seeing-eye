@@ -13,6 +13,10 @@ from eye import Eye
 from monster_eye import MonsterEye
 from zombie_eye import ZombieEye
 from dragon_eye import DragonEye
+from snake_eye import SnakeEye
+from spider_eye import SpiderEye
+from bug_eye import BugEye
+from creepy_figure import CreepyFigure
 
 
 class SettingsPanel(tk.Toplevel):
@@ -73,7 +77,7 @@ class SettingsPanel(tk.Toplevel):
             
         self.eye_type_var.trace_add("write", on_eye_type_change)
         
-        dropdown = tk.OptionMenu(outer, self.eye_type_var, "human", "monster", "zombie", "dragon")
+        dropdown = tk.OptionMenu(outer, self.eye_type_var, "human", "monster", "zombie", "dragon", "snake", "spider", "bug", "creepy_figure")
         dropdown.config(bg="#181818", fg="#ccc", highlightthickness=0)
         dropdown["menu"].config(bg="#181818", fg="#ccc")
         dropdown.pack(anchor="w", pady=3)
@@ -194,18 +198,23 @@ class Dashboard:
     def run(self) -> int:
         def tick() -> None:
             current_eye_type = getattr(settings, "eye_type", "human")
-            if (current_eye_type == "human" and type(self.eye).__name__ != "Eye") or \
-               (current_eye_type == "monster" and type(self.eye).__name__ != "MonsterEye") or \
-               (current_eye_type == "zombie" and type(self.eye).__name__ != "ZombieEye") or \
-               (current_eye_type == "dragon" and type(self.eye).__name__ != "DragonEye"):
-                if current_eye_type == "monster":
-                    self.eye = MonsterEye(settings.width, settings.height)
-                elif current_eye_type == "zombie":
-                    self.eye = ZombieEye(settings.width, settings.height)
-                elif current_eye_type == "dragon":
-                    self.eye = DragonEye(settings.width, settings.height)
-                else:
-                    self.eye = Eye(settings.width, settings.height)
+            if type(self.eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure") != current_eye_type and not (current_eye_type == "human" and type(self.eye).__name__ == "Eye"):
+
+                if current_eye_type == "monster": self.eye = MonsterEye(settings.width, settings.height)
+
+                elif current_eye_type == "zombie": self.eye = ZombieEye(settings.width, settings.height)
+
+                elif current_eye_type == "dragon": self.eye = DragonEye(settings.width, settings.height)
+
+                elif current_eye_type == "snake": self.eye = SnakeEye(settings.width, settings.height)
+
+                elif current_eye_type == "spider": self.eye = SpiderEye(settings.width, settings.height)
+
+                elif current_eye_type == "bug": self.eye = BugEye(settings.width, settings.height)
+
+                elif current_eye_type == "creepy_figure": self.eye = CreepyFigure(settings.width, settings.height)
+
+                else: self.eye = Eye(settings.width, settings.height)
 
             t0 = time.perf_counter()
             frame = self.camera.read()
