@@ -56,15 +56,15 @@ class SnakeEye:
         inside = d <= 1.0
         t = np.clip(d, 0, 1)
 
-        base = 252.0 - 30.0 * t ** 1.8
+        base = 180.0 - 50.0 * t ** 1.8
         # shadow cast by the upper eyelid
         lid_shadow_y = self.cy - R * 0.35
         shade = np.clip((yy - lid_shadow_y) / (0.55 * R), 0.0, 1.0)
         base = base - 22.0 * (1.0 - shade) * inside
 
-        r = np.clip(base * 0.1, 0, 255)
-        g = np.clip(base * 0.2, 0, 255)
-        b = np.clip(base * 0.1, 0, 255)
+        r = np.clip(base * 0.6 + 40, 0, 255)
+        g = np.clip(base * 0.9 + 20, 0, 255)
+        b = np.clip(base * 0.2, 0, 255)
 
         # wet glossy sheen: soft broad specular on the upper-left of the globe
         sheen_x = self.cx - R * 0.30
@@ -172,9 +172,9 @@ class SnakeEye:
         cap *= np.clip((cap_dist - 0.38) / 0.15, 0, 1)
 
         # vessel color: deep blood red
-        vessel_r = 150.0
-        vessel_g = 180.0
-        vessel_b = 0.0
+        vessel_r = 80.0
+        vessel_g = 120.0
+        vessel_b = 20.0
         blend = np.clip(cap * 1.6, 0.0, 0.92)  # cap at 92% so they stay translucent
         r = r * (1.0 - blend) + vessel_r * blend
         g = g * (1.0 - blend) + vessel_g * blend
@@ -242,8 +242,8 @@ class SnakeEye:
         # collarette ring (inner boundary of the ciliary zone)
         collarette = np.exp(-((idd - 0.42) ** 2) / 0.004)
 
-        inner = np.array([220, 255, 0], dtype=float)
-        outer = np.array([0, 40, 10], dtype=float)
+        inner = np.array([120, 255, 30], dtype=float)
+        outer = np.array([10, 80, 20], dtype=float)
         tt = np.clip(idd, 0, 1)[..., None]
         col = inner * (1 - tt) + outer * tt
         col = col + 16.0 * fib[..., None] * (0.3 + 0.7 * tt)
@@ -287,7 +287,7 @@ class SnakeEye:
         psize = ps * 6
         palpha = Image.new("L", (psize, psize), 0)
         pdraw = ImageDraw.Draw(palpha)
-        pdraw.ellipse([psize / 2 - ps * 0.15, psize / 2 - ps * 1.8, psize / 2 + ps * 0.15, psize / 2 + ps * 1.8], fill=255)
+        pdraw.ellipse([psize / 2 - ps * 0.08, psize / 2 - ps * 1.8, psize / 2 + ps * 0.08, psize / 2 + ps * 1.8], fill=255)
         self._pupil_alpha = palpha.filter(ImageFilter.GaussianBlur(1))
         self._pupil_base = ps
 

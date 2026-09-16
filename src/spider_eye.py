@@ -32,7 +32,7 @@ class SpiderEye:
 
     def _build_static_layers(self) -> None:
         # Background: dark hairy texture
-        bg = Image.new("RGB", (self.width, self.height), (15, 10, 10))
+        bg = Image.new("RGB", (self.width, self.height), (35, 30, 30))
         draw = ImageDraw.Draw(bg)
         rng = np.random.default_rng(42)
         for _ in range(1500):
@@ -42,7 +42,7 @@ class SpiderEye:
             angle = rng.uniform(0, math.pi * 2)
             x2 = x1 + math.cos(angle) * length
             y2 = y1 + math.sin(angle) * length
-            color = rng.choice([(25, 20, 20), (35, 30, 30), (10, 5, 5)])
+            color = rng.choice([(45, 40, 40), (60, 50, 50), (25, 20, 20)])
             draw.line([x1, y1, x2, y2], fill=tuple(color), width=1)
         self._bg = bg
         
@@ -62,8 +62,8 @@ class SpiderEye:
         hl_size = 40
         hl = Image.new("RGBA", (hl_size, hl_size), (0, 0, 0, 0))
         hdraw = ImageDraw.Draw(hl)
-        hdraw.ellipse([5, 5, 25, 20], fill=(255, 255, 255, 180))
-        hdraw.ellipse([20, 15, 28, 23], fill=(255, 255, 255, 100))
+        hdraw.ellipse([5, 5, 25, 20], fill=(255, 255, 255, 220))
+        hdraw.ellipse([20, 15, 28, 23], fill=(255, 255, 255, 160))
         self._hl = hl.filter(ImageFilter.GaussianBlur(1))
 
     def update(self, target_x: int | None, target_y: int | None, now: float) -> None:
@@ -125,11 +125,11 @@ class SpiderEye:
             ey = self.cy + oy + head_shift_y
             
             # Base black eye
-            draw.ellipse([ex - r, ey - r, ex + r, ey + r], fill=(10, 5, 5))
+            draw.ellipse([ex - r, ey - r, ex + r, ey + r], fill=(30, 10, 10))
             
             # Soft inner glow to make it look like a lens
-            draw.ellipse([ex - r*0.8, ey - r*0.8, ex + r*0.8, ey + r*0.8], fill=(20, 10, 15))
-            draw.ellipse([ex - r*0.5, ey - r*0.5, ex + r*0.5, ey + r*0.5], fill=(30, 15, 20))
+            draw.ellipse([ex - r*0.8, ey - r*0.8, ex + r*0.8, ey + r*0.8], fill=(80, 20, 20))
+            draw.ellipse([ex - r*0.5, ey - r*0.5, ex + r*0.5, ey + r*0.5], fill=(140, 30, 30))
             
             # Specular highlight shifts with gaze
             hl_shift_x = int(gx * r * 0.4)

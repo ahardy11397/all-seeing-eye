@@ -1,4 +1,74 @@
-from __future__ import annotations
+from pathlib import Path
+import re
+
+# --- Update snake_eye.py ---
+# Let's make the snake eye more distinct: 
+# 1. Very bright toxic green iris
+# 2. Narrower slit pupil
+# 3. Yellow/green sclera instead of white with blood vessels
+snake_path = Path("src/snake_eye.py")
+snake_code = snake_path.read_text()
+
+# Change the pupil slit to be even narrower
+snake_code = snake_code.replace("psize / 2 - ps * 0.15", "psize / 2 - ps * 0.08")
+snake_code = snake_code.replace("psize / 2 + ps * 0.15", "psize / 2 + ps * 0.08")
+
+# Change the base sclera color to a sickly yellow/green, removing the white
+snake_code = re.sub(
+    r"base = 252\.0 - 30\.0 \* t \*\* 1\.8", 
+    "base = 180.0 - 50.0 * t ** 1.8", 
+    snake_code
+)
+snake_code = re.sub(
+    r"r = np\.clip\(base \* 0\.1, 0, 255\)",
+    "r = np.clip(base * 0.6 + 40, 0, 255)",
+    snake_code
+)
+snake_code = re.sub(
+    r"g = np\.clip\(base \* 0\.2, 0, 255\)",
+    "g = np.clip(base * 0.9 + 20, 0, 255)",
+    snake_code
+)
+snake_code = re.sub(
+    r"b = np\.clip\(base \* 0\.1, 0, 255\)",
+    "b = np.clip(base * 0.2, 0, 255)",
+    snake_code
+)
+
+# Darken the vessels slightly and make them more yellow-green
+snake_code = snake_code.replace("vessel_r = 150.0", "vessel_r = 80.0")
+snake_code = snake_code.replace("vessel_g = 180.0", "vessel_g = 120.0")
+snake_code = snake_code.replace("vessel_b = 0.0", "vessel_b = 20.0")
+
+# Change Iris color to vivid neon green / yellow
+snake_code = snake_code.replace("np.array([220, 255, 0], dtype=float)", "np.array([120, 255, 30], dtype=float)")
+snake_code = snake_code.replace("np.array([0, 40, 10], dtype=float)", "np.array([10, 80, 20], dtype=float)")
+
+snake_path.write_text(snake_code)
+
+
+# --- Update spider_eye.py ---
+spider_path = Path("src/spider_eye.py")
+spider_code = spider_path.read_text()
+
+# Brighter background, dark greyish brown instead of pitch black
+spider_code = spider_code.replace("Image.new(\"RGB\", (self.width, self.height), (15, 10, 10))", "Image.new(\"RGB\", (self.width, self.height), (35, 30, 30))")
+spider_code = spider_code.replace("rng.choice([(25, 20, 20), (35, 30, 30), (10, 5, 5)])", "rng.choice([(45, 40, 40), (60, 50, 50), (25, 20, 20)])")
+
+# Brighter, more distinct eyes (deep red glowing lenses)
+spider_code = spider_code.replace("fill=(10, 5, 5)", "fill=(30, 10, 10)")
+spider_code = spider_code.replace("fill=(20, 10, 15)", "fill=(80, 20, 20)")
+spider_code = spider_code.replace("fill=(30, 15, 20)", "fill=(140, 30, 30)")
+# Specular highlight stronger
+spider_code = spider_code.replace("fill=(255, 255, 255, 180)", "fill=(255, 255, 255, 220)")
+spider_code = spider_code.replace("fill=(255, 255, 255, 100)", "fill=(255, 255, 255, 160)")
+
+spider_path.write_text(spider_code)
+
+
+# --- Update creepy_figure.py ---
+creepy_path = Path("src/creepy_figure.py")
+creepy_code = """from __future__ import annotations
 import math
 import random
 import time
@@ -46,18 +116,18 @@ class CreepyFigure:
         self._bg = Image.fromarray(arr, "RGB")
         
         # Create a large shapeless blurry shadow template
-        self.shadow_w, self.shadow_h = 600, 800
+        self.shadow_w, self.shadow_h = 350, 500
         shadow = Image.new("RGBA", (self.shadow_w, self.shadow_h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(shadow)
         
-        # Draw a very organic, blobby shape in the center
-        draw.ellipse([150, 150, 450, 650], fill=(0, 0, 0, 240))
-        draw.ellipse([100, 250, 400, 550], fill=(0, 0, 0, 200))
-        draw.ellipse([200, 100, 500, 500], fill=(0, 0, 0, 200))
-        draw.ellipse([180, 300, 480, 700], fill=(0, 0, 0, 220))
+        # Draw a very organic, blobby shape
+        draw.ellipse([50, 50, 300, 450], fill=(0, 0, 0, 240))
+        draw.ellipse([0, 100, 250, 350], fill=(0, 0, 0, 200))
+        draw.ellipse([100, 0, 350, 300], fill=(0, 0, 0, 200))
+        draw.ellipse([80, 200, 320, 500], fill=(0, 0, 0, 220))
         
-        # Heavy blur to make it completely shapeless with no hard edges
-        self._shadow = shadow.filter(ImageFilter.GaussianBlur(80))
+        # Heavy blur to make it completely shapeless
+        self._shadow = shadow.filter(ImageFilter.GaussianBlur(35))
 
     def update(self, target_x: int | None, target_y: int | None, now: float) -> None:
         if target_x is not None:
@@ -91,11 +161,7 @@ class CreepyFigure:
 
         # Extremely slow smooth movement for a creeping shadow
         dx = tx - self.iris_x
-        step = dx * 0.01
-        max_speed = 1.0
-        if abs(step) > max_speed:
-            step = math.copysign(max_speed, step)
-        self.iris_x += step
+        self.iris_x += dx * 0.03
             
     def render(self) -> Image.Image:
         canvas = self._bg.copy()
@@ -109,3 +175,7 @@ class CreepyFigure:
         canvas.paste(self._shadow, (fx, fy), self._shadow)
         
         return canvas
+"""
+creepy_path.write_text(creepy_code)
+
+print("Updated eyes!")
