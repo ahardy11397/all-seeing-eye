@@ -46,23 +46,29 @@ class Camera:
         self._thread.start()
 
     def _reader_loop(self) -> None:
-        while not self._stop.is_set():
-            ok, frame = self.cap.read()
-            if not ok or frame is None or frame.size == 0:
-                self._fail_count += 1
-                if self._fail_count >= self._max_fails:
-                    # surface failure; main loop will raise on repeated reads
-                    with self._lock:
-                        self._frame = None
-                    time.sleep(0.05)
+        try:
+            while not self._stop.is_set():
+                ok, frame = self.cap.read()
+                if not ok or frame is None or frame.size == 0:
+                    self._fail_count += 1
+                    if self._fail_count >= self._max_fails:
+                        with self._lock:
+                            self._frame = None
+                        time.sleep(0.05)
+                        continue
+                    time.sleep(0.01)
                     continue
-                time.sleep(0.01)
-                continue
-            self._fail_count = 0
-            with self._lock:
-                self._frame = frame  # keep only the newest frame
-            # small yield so the grab loop keeps the buffer drained
-            time.sleep(0.001)
+                self._fail_count = 0
+                with self._lock:
+                    self._frame = frame
+                time.sleep(0.001)
+            self.cap.release()
+        except Exception as e:
+            print(f"Camera thread exiting: {e}")
+            try:
+                self.cap.release()
+            except:
+                pass
 
     def read(self):
         with self._lock:
@@ -80,5 +86,5 @@ class Camera:
 
     def release(self) -> None:
         self._stop.set()
-        self._thread.join(timeout=2.0)
-        self.cap.release()
+        # Don't join or call cap.release() here, as cap.read() might be blocked
+        # in the other thread, and calling release concurrently causes a Segfault!

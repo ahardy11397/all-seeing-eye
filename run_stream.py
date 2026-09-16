@@ -69,6 +69,42 @@ def _annotate_camera(frame, detection, eye, parked: bool):
     return vis
 
 
+class CameraManager:
+    def __init__(self):
+        self.camera = None
+        self.connecting = False
+        self.last_attempt = 0.0
+
+    def get_frame(self):
+        if self.camera is not None:
+            try:
+                return self.camera.read()
+            except RuntimeError as e:
+                import sys
+                print(f"Camera dropped: {e}. Reconnecting...", file=sys.stderr)
+                try:
+                    self.camera.release()
+                except:
+                    pass
+                self.camera = None
+                return None
+        else:
+            import time
+            if not self.connecting and time.time() - self.last_attempt > 5.0:
+                self.connecting = True
+                self.last_attempt = time.time()
+                import threading
+                threading.Thread(target=self._connect, daemon=True).start()
+            return None
+
+    def _connect(self):
+        try:
+            self.camera = Camera()
+        except:
+            pass
+        finally:
+            self.connecting = False
+
 def main() -> int:
     detector = Detector()
     eye = Eye(settings.width, settings.height)
@@ -97,12 +133,10 @@ def main() -> int:
     fps_values: list[float] = []
 
     try:
+        cam_mgr = CameraManager()
         while True:
             current_eye_type = getattr(settings, "eye_type", "human")
-            if (current_eye_type == "human" and type(eye).__name__ != "Eye") or \
-               (current_eye_type == "monster" and type(eye).__name__ != "MonsterEye") or \
-               (current_eye_type == "zombie" and type(eye).__name__ != "ZombieEye") or \
-               (current_eye_type == "dragon" and type(eye).__name__ != "DragonEye"):
+            if (current_eye_type == "human" and type(eye).__name__ != "Eye") or                (current_eye_type == "monster" and type(eye).__name__ != "MonsterEye") or                (current_eye_type == "zombie" and type(eye).__name__ != "ZombieEye") or                (current_eye_type == "dragon" and type(eye).__name__ != "DragonEye"):
                 if current_eye_type == "monster":
                     eye = MonsterEye(settings.width, settings.height)
                 elif current_eye_type == "zombie":
@@ -113,38 +147,25 @@ def main() -> int:
                     eye = Eye(settings.width, settings.height)
 
             t0 = time.perf_counter()
-            if camera is None:
-                # Retry connection every 5 seconds
-                import time
-                time.sleep(5)
+            frame = None
+            
+            frame = cam_mgr.get_frame()
+            
+            if frame is not None:
                 try:
-                    camera = Camera()
-                except:
-                    pass
-                continue
-                
-            try:
-                frame = camera.read()
-            except RuntimeError as e:
-                print(f"Camera dropped: {e}. Reconnecting...")
-                camera.release()
-                camera = None
-                continue
-                
-            if frame is None:
-                time.sleep(0.1)
-                continue
-
-            try:
-                detection = detector.detect(frame)
-            except Exception as exc:
-                print(f"detection error: {exc}", file=sys.stderr)
+                    detection = detector.detect(frame)
+                except Exception as exc:
+                    print(f"detection error: {exc}", file=sys.stderr)
+                    detection = None
+                parked = getattr(detector, "_vehicle_parked_until", 0) > time.time()
+                target_x = detection.x if detection else None
+                target_y = detection.y if detection else None
+            else:
                 detection = None
+                parked = False
+                target_x = None
+                target_y = None
 
-            parked = detector._vehicle_parked_until > time.time()
-
-            target_x = detection.x if detection else None
-            target_y = detection.y if detection else None
             eye.update(target_x, target_y, time.time())
             eye_pil = eye.render()
 
@@ -152,8 +173,15 @@ def main() -> int:
             broadcaster.publish(_jpeg(eye_pil, quality))
 
             # dashboard: eye preview + annotated camera
-            cam_vis = _annotate_camera(frame, detection, eye, parked)
-            cam_pil = Image.fromarray(cv2.cvtColor(cam_vis, cv2.COLOR_BGR2RGB))
+            if frame is not None:
+                cam_vis = _annotate_camera(frame, detection, eye, parked)
+                cam_pil = Image.fromarray(cv2.cvtColor(cam_vis, cv2.COLOR_BGR2RGB))
+            else:
+                import numpy as np
+                cam_vis = np.zeros((settings.height, settings.width, 3), dtype=np.uint8)
+                cv2.putText(cam_vis, "NO SIGNAL", (settings.width//2 - 90, settings.height//2), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+                cam_pil = Image.fromarray(cam_vis)
+                
             cam_pil = cam_pil.resize((settings.width, settings.height))
 
             fps_values.append(1.0 / (time.perf_counter() - t0) if time.perf_counter() - t0 > 0 else 0)

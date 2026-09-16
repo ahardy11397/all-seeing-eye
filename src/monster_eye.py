@@ -390,7 +390,6 @@ class MonsterEye:
                 self._next_saccade = now
             
             if now > self._next_saccade:
-                import random
                 # Dart within a 15px radius to "examine" the target
                 self._saccade_target = (random.randint(-15, 15), random.randint(-15, 15))
                 self._next_saccade = now + random.uniform(0.3, 1.8)
