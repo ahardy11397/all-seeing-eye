@@ -36,7 +36,7 @@ class Detector:
         self._negative_count = 0
 
         self.tracks: list[Track] = []
-        self.parked_drift_px: int = 25
+        
 
     @property
     def _vehicle_parked_until(self) -> float:
@@ -78,7 +78,7 @@ class Detector:
                     xs = [p[0] for p in track.history]
                     ys = [p[1] for p in track.history]
                     shift = math.hypot(max(xs) - min(xs), max(ys) - min(ys))
-                    if shift < self.parked_drift_px:
+                    if shift < settings.parked_drift_px:
                         track.parked_until = now + settings.parked_cooldown_s
                         track.history = [track.history[-1]] # keep last position
                     else:

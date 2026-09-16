@@ -85,6 +85,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 elif action == "night_vision_gain": setattr(settings, "cam_night_vision_gain", v)
                 elif action == "night_vision": setattr(settings, "cam_night", val is True or val == "on")
                 
+                
+                settings.save()
+                settings.save()
+                
                 # Prerequisites
                 if action in ["exposure_ns", "iso"]:
                     requests.get(f"{base_url}/settings/manual_sensor?set=on", timeout=1)
@@ -142,12 +146,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_error(400)
             return
 
-        int_fields = {"min_box_area", "required_detections", "detection_interval",
-                      "eye_smoothing"}
         float_fields = {"min_confidence", "parked_cooldown_s", "smoothing"}
         str_fields = {"eye_type"}
         bool_fields = {"blink_enabled", "cam_night"}
-        int_fields = {"cam_zoom", "cam_focus_distance", "cam_exposure", "cam_gain", "cam_night_vision_exposure", "cam_night_vision_gain"}
+        int_fields = {"cam_zoom", "cam_focus_distance", "cam_exposure", "cam_gain", "cam_night_vision_exposure", "cam_night_vision_gain", "min_box_area", "required_detections", "detection_interval", "parked_drift_px"}
         applied = {}
         for key, value in updates.items():
             if key in int_fields:
@@ -162,13 +164,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             elif key in bool_fields:
                 setattr(settings, key, bool(value))
                 applied[key] = bool(value)
-            elif key in int_fields:
-                setattr(settings, key, int(value))
-                applied[key] = int(value)
-            elif key == "parked_drift_px":
-                self.server.detector.parked_drift_px = int(float(value))  # type: ignore[attr-defined]
-                applied[key] = int(float(value))
+            
+            
 
+        
+        settings.save()
         self.send_response(200)
         body = json.dumps({"ok": True, "applied": applied}).encode()
         self.send_header("Content-Type", "application/json")
