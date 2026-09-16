@@ -35,33 +35,33 @@ class SettingsPanel(tk.Toplevel):
         # lower confidence = more sensitive (more detections, more false positives)
         self._slider(outer, "Confidence threshold (lower = more sensitive)",
                      0.10, 0.95, settings.min_confidence, 0.01,
-                     lambda v: (setattr(settings, "min_confidence", float(v, settings.save()))))
+                     lambda v: (setattr(settings, "min_confidence", float(v)), settings.save()))
 
         # lower min area = smaller objects tracked
         self._slider(outer, "Min object size (px², lower = smaller objects)",
                      500, 40000, settings.min_box_area, 200,
-                     lambda v: (setattr(settings, "min_box_area", int(float(v, settings.save())))))
+                     lambda v: (setattr(settings, "min_box_area", int(float(v))), settings.save()))
 
         # lower required = faster lock-on, more jitter
         self._slider(outer, "Frames to confirm detection",
                      1, 10, settings.required_detections, 1,
-                     lambda v: (setattr(settings, "required_detections", int(float(v, settings.save())))))
+                     lambda v: (setattr(settings, "required_detections", int(float(v))), settings.save()))
 
         # detection every N frames — 1 = most responsive, most CPU
         self._slider(outer, "Run detection every N frames",
                      1, 10, settings.detection_interval, 1,
-                     lambda v: (setattr(settings, "detection_interval", int(float(v, settings.save())))))
+                     lambda v: (setattr(settings, "detection_interval", int(float(v))), settings.save()))
 
         tk.Label(outer, text="Parked-vehicle rejection", fg="#fff", bg="#181818",
                  font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 4))
 
         self._slider(outer, "Parked cooldown (s)",
                      5.0, 60.0, settings.parked_cooldown_s, 1.0,
-                     lambda v: (setattr(settings, "parked_cooldown_s", float(v, settings.save()))))
+                     lambda v: (setattr(settings, "parked_cooldown_s", float(v)), settings.save()))
 
         self._slider(outer, "Max drift to count as parked (px)",
                      2, 40, getattr(settings, "parked_drift_px", 25), 1,
-                     lambda v: (setattr(settings, "parked_drift_px", int(float(v, settings.save())))))
+                     lambda v: (setattr(settings, "parked_drift_px", int(float(v))), settings.save()))
 
         tk.Label(outer, text="Eye style", fg="#fff", bg="#181818",
                  font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 4))
@@ -82,7 +82,7 @@ class SettingsPanel(tk.Toplevel):
 
         self._slider(outer, "Eye smoothing (higher = snappier)",
                      0.05, 0.6, settings.smoothing, 0.01,
-                     lambda v: (setattr(settings, "smoothing", float(v, settings.save()))))
+                     lambda v: (setattr(settings, "smoothing", float(v)), settings.save()))
 
         btns = tk.Frame(outer, bg="#181818")
         btns.pack(fill=tk.X, pady=(12, 0))

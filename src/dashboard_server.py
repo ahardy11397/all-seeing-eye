@@ -200,7 +200,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "required_detections": settings.required_detections,
                 "detection_interval": settings.detection_interval,
                 "parked_cooldown_s": settings.parked_cooldown_s,
-                "parked_drift_px": getattr(self.server.detector, "parked_drift_px", 8),  # type: ignore[attr-defined]
+                "parked_drift_px": settings.parked_drift_px,  # type: ignore[attr-defined]
                 "smoothing": settings.smoothing,
                 "eye_type": getattr(settings, "eye_type", "human"),
                 "blink_enabled": getattr(settings, "blink_enabled", False),
@@ -324,6 +324,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
   </div>
 </main>
 <script>
+let torchState = false;
+let nightState = false;
+const CAM_SLIDERS = [
+  {id: 'cam_zoom', action: 'zoom'},
+  {id: 'cam_focus_distance', action: 'focus_distance'},
+  {id: 'cam_exposure', action: 'exposure_ns'},
+  {id: 'cam_gain', action: 'iso'},
+  {id: 'cam_night_vision_exposure', action: 'night_vision_average'},
+  {id: 'cam_night_vision_gain', action: 'night_vision_gain'}
+];
+
 const FIELDS = ['min_confidence','min_box_area','required_detections','detection_interval',
                 'parked_cooldown_s','parked_drift_px','smoothing'];
 const STR_FIELDS = ['eye_type'];
@@ -398,7 +409,7 @@ document.getElementById('reset').onclick = () => {
 };
 
 // -- camera controls ---------------------------------------------------------
-let torchState = false;
+
 function camCmd(action, value=null) {
   fetch('/api/camera', {
     method: 'POST',
@@ -411,20 +422,13 @@ document.getElementById('cam_torch').onclick = () => {
   torchState = !torchState;
   camCmd('torch', torchState);
 };
-let nightState = false;
+
 document.getElementById('cam_night').onclick = () => {
   nightState = !nightState;
   camCmd('night_vision', nightState ? 'on' : 'off');
 };
 
-const CAM_SLIDERS = [
-  {id: 'cam_zoom', action: 'zoom'},
-  {id: 'cam_focus_distance', action: 'focus_distance'},
-  {id: 'cam_exposure', action: 'exposure_ns'},
-  {id: 'cam_gain', action: 'iso'},
-  {id: 'cam_night_vision_exposure', action: 'night_vision_average'},
-  {id: 'cam_night_vision_gain', action: 'night_vision_gain'}
-];
+
 
 CAM_SLIDERS.forEach(s => {
   const el = document.getElementById(s.id);
