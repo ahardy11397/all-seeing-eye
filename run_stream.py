@@ -70,7 +70,6 @@ def _annotate_camera(frame, detection, eye, parked: bool):
 
 
 def main() -> int:
-    camera = Camera()
     detector = Detector()
     eye = Eye(settings.width, settings.height)
 
@@ -81,6 +80,13 @@ def main() -> int:
     # local dashboard with previews + settings
     dash_srv = make_dashboard_server(store, settings.dashboard_port, detector)
     threading.Thread(target=dash_srv.serve_forever, daemon=True).start()
+    
+    # Try to initialize camera, but don't crash if it's temporarily offline
+    try:
+        camera = Camera()
+    except Exception as e:
+        print(f"Warning: Failed to connect to camera on startup: {e}")
+        camera = None
 
     host_note = f"http://0.0.0.0:{settings.dashboard_port}/"
     print(f"Dashboard: {host_note}   (open on this machine)")
@@ -107,7 +113,24 @@ def main() -> int:
                     eye = Eye(settings.width, settings.height)
 
             t0 = time.perf_counter()
-            frame = camera.read()
+            if camera is None:
+                # Retry connection every 5 seconds
+                import time
+                time.sleep(5)
+                try:
+                    camera = Camera()
+                except:
+                    pass
+                continue
+                
+            try:
+                frame = camera.read()
+            except RuntimeError as e:
+                print(f"Camera dropped: {e}. Reconnecting...")
+                camera.release()
+                camera = None
+                continue
+                
             if frame is None:
                 time.sleep(0.1)
                 continue
@@ -159,7 +182,8 @@ def main() -> int:
     except KeyboardInterrupt:
         pass
     finally:
-        camera.release()
+        if camera is not None:
+            camera.release()
         stream_srv.shutdown()
         dash_srv.shutdown()
     return 0
