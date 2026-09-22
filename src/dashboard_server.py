@@ -225,34 +225,52 @@ class DashboardHandler(BaseHTTPRequestHandler):
         html = """<!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>All-Seeing Eye — Dashboard</title>
 <style>
   :root { color-scheme: dark; }
   body { margin: 0; background: #0d0f12; color: #e8eaed;
          font: 14px/1.45 system-ui, sans-serif; }
   header { padding: 14px 20px; background: #16191d; display: flex;
-           align-items: baseline; gap: 18px; }
+           align-items: baseline; gap: 18px; flex-wrap: wrap; }
   header h1 { font-size: 18px; margin: 0; }
   #status { font-size: 13px; color: #9aa0a6; }
   #status b { color: #81c995; }
-  main { display: grid; grid-template-columns: 1fr 1fr 340px; gap: 16px;
-         padding: 16px 20px; max-width: 1500px; margin: 0 auto; }
-  .card { background: #16191d; border-radius: 10px; padding: 12px; }
-  .card h2 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase;
-             letter-spacing: .08em; color: #9aa0a6; }
-  img { width: 100%; border-radius: 6px; background: #000; display: block; }
-  .info { margin-top: 8px; font-size: 12px; color: #bdc1c6; }
+  
+  main { display: grid; gap: 16px; padding: 16px; max-width: 1500px; margin: 0 auto; 
+         grid-template-columns: 1fr; }
+  @media (min-width: 768px) {
+      main { grid-template-columns: 1fr 1fr; }
+  }
+  @media (min-width: 1200px) {
+      main { grid-template-columns: 1fr 1fr 340px; }
+      .card-eye { grid-column: 1; grid-row: 1 / span 2; }
+      .card-cam { grid-column: 2; grid-row: 1 / span 2; }
+      .card-settings { grid-column: 3; grid-row: 1; }
+      .card-controls { grid-column: 3; grid-row: 2; }
+  }
+
+  .card { background: #16191d; border-radius: 10px; padding: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase;
+             letter-spacing: .08em; color: #9aa0a6; border-bottom: 1px solid #2c313a; padding-bottom: 8px; }
+  img { width: 100%; border-radius: 6px; background: #000; display: block; object-fit: contain; }
+  .info { margin-top: 10px; font-size: 12px; color: #bdc1c6; background: #202124; padding: 8px; border-radius: 6px; }
   .info span { color: #81c995; font-weight: 600; }
   /* settings */
-  .ctl { margin: 10px 0; }
-  .ctl label { display: flex; justify-content: space-between; font-size: 12.5px;
-               color: #bdc1c6; margin-bottom: 4px; }
+  .ctl { margin: 12px 0; }
+  .ctl label { display: flex; justify-content: space-between; font-size: 13px;
+               color: #e8eaed; margin-bottom: 6px; font-weight: 500; }
   .ctl label output { color: #8ab4f8; font-weight: 600; }
-  input[type=range] { width: 100%; accent-color: #8ab4f8; }
-  .btn { margin-top: 14px; width: 100%; padding: 8px; border: 0; border-radius: 6px;
-         background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; }
+  input[type=range] { width: 100%; accent-color: #8ab4f8; margin: 4px 0; }
+  .btn { margin-top: 14px; width: 100%; padding: 10px; border: 0; border-radius: 6px;
+         background: #8ab4f8; color: #202124; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .btn:hover { background: #aecbfa; }
   .btn:active { filter: brightness(.9); }
-  .hint { font-size: 11px; color: #80868b; margin-top: 6px; }
+  .hint { font-size: 11px; color: #80868b; margin-top: 8px; text-align: center; }
+  
+  /* Select and Checkbox styling */
+  select { width: 100%; padding: 8px; background: #202124; color: #e8eaed; border: 1px solid #5f6368; border-radius: 6px; font-size: 14px; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: #8ab4f8; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -263,11 +281,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
     target <b id="target">–</b></div>
 </header>
 <main>
-  <div class="card"><h2>Projected eye</h2><img id="eye" src="/api/eye.jpg"></div>
-  <div class="card"><h2>Camera + tracking</h2><img id="cam" src="/api/cam.jpg">
+  <div class="card card-eye"><h2>Projected eye</h2><img id="eye" src="/api/eye.jpg"></div>
+  <div class="card card-cam"><h2>Camera + tracking</h2><img id="cam" src="/api/cam.jpg">
     <div class="info">Detection: <span id="det">–</span> ·
       box: <span id="box">–</span></div></div>
-  <div class="card"><h2>Settings</h2>
+  <div class="card card-settings"><h2>Settings</h2>
     <div class="ctl" style="margin-bottom: 12px;"><label>Eye type</label>
       <select id="eye_type" style="width: 100%; padding: 4px; background: #202124; color: #e8eaed; border: 1px solid #5f6368; border-radius: 4px;">
                 <option value="human">Human (Default)</option>
@@ -305,7 +323,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     <button class="btn" id="reset">Reset to defaults</button>
     <div class="hint">Changes apply instantly on the next frame.</div>
   </div>
-  <div class="card"><h2>Camera Controls</h2>
+  <div class="card card-controls"><h2>Camera Controls</h2>
     <div class="ctl" style="display: flex; flex-wrap: wrap; gap: 8px;">
       <button class="btn" id="cam_focus" style="margin-top: 0; flex: 1; background: #5f6368; color: #fff;">Autofocus</button>
       <button class="btn" id="cam_torch" style="margin-top: 0; flex: 1; background: #5f6368; color: #fff;">Toggle Flash</button>
