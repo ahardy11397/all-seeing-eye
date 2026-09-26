@@ -18,6 +18,9 @@ from snake_eye import SnakeEye
 from spider_eye import SpiderEye
 from bug_eye import BugEye
 from creepy_figure import CreepyFigure
+from joker_eye import JokerEye
+from skull import Skull
+from dancing_skeleton import DancingSkeleton
 from projector import Projector
 
 
@@ -62,6 +65,14 @@ def main() -> int:
             elif current_eye_type == "bug": eye = BugEye(width, height)
 
             elif current_eye_type == "creepy_figure": eye = CreepyFigure(width, height)
+
+            elif current_eye_type == "joker": eye = JokerEye(width, height)
+
+
+            elif current_eye_type == "skull": eye = Skull(width, height)
+
+
+            elif current_eye_type == "dancing_skeleton": eye = DancingSkeleton(width, height)
 
             else: eye = Eye(width, height)
             projector = Projector(eye)

@@ -295,7 +295,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         <option value="snake">Snake</option>
         <option value="spider">Spider</option>
         <option value="bug">Bug</option>
-        <option value="creepy_figure">Creepy Figure</option>
+                <option value="creepy_figure">Creepy Figure</option>
+                <option value="joker">Joker (Heath Ledger)</option>
+        <option value="skull">Skull</option>
+        <option value="dancing_skeleton">Dancing Skeleton</option>
       </select>
     </div>
     <div class="ctl"><label>Min confidence <output id="o_min_confidence"></output></label>

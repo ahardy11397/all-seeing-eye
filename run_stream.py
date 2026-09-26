@@ -24,6 +24,9 @@ from snake_eye import SnakeEye
 from spider_eye import SpiderEye
 from bug_eye import BugEye
 from creepy_figure import CreepyFigure
+from joker_eye import JokerEye
+from skull import Skull
+from dancing_skeleton import DancingSkeleton
 from dashboard_server import make_dashboard_server, store
 from stream_server import broadcaster, make_server
 
@@ -155,6 +158,14 @@ def main() -> int:
                 elif current_eye_type == "bug": eye = BugEye(settings.width, settings.height)
 
                 elif current_eye_type == "creepy_figure": eye = CreepyFigure(settings.width, settings.height)
+
+                elif current_eye_type == "joker": eye = JokerEye(settings.width, settings.height)
+
+
+                elif current_eye_type == "skull": eye = Skull(settings.width, settings.height)
+
+
+                elif current_eye_type == "dancing_skeleton": eye = DancingSkeleton(settings.width, settings.height)
 
                 else: eye = Eye(settings.width, settings.height)
 

@@ -17,6 +17,9 @@ from snake_eye import SnakeEye
 from spider_eye import SpiderEye
 from bug_eye import BugEye
 from creepy_figure import CreepyFigure
+from joker_eye import JokerEye
+from skull import Skull
+from dancing_skeleton import DancingSkeleton
 
 
 class SettingsPanel(tk.Toplevel):
@@ -213,6 +216,14 @@ class Dashboard:
                 elif current_eye_type == "bug": self.eye = BugEye(settings.width, settings.height)
 
                 elif current_eye_type == "creepy_figure": self.eye = CreepyFigure(settings.width, settings.height)
+
+                elif current_eye_type == "joker": self.eye = JokerEye(settings.width, settings.height)
+
+
+                elif current_eye_type == "skull": self.eye = Skull(settings.width, settings.height)
+
+
+                elif current_eye_type == "dancing_skeleton": self.eye = DancingSkeleton(settings.width, settings.height)
 
                 else: self.eye = Eye(settings.width, settings.height)
 
