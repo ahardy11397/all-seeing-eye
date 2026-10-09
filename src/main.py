@@ -21,6 +21,7 @@ from creepy_figure import CreepyFigure
 from joker_eye import JokerEye
 from skull import Skull
 from dancing_skeleton import DancingSkeleton
+from uga_logo import UgaLogo
 from projector import Projector
 
 
@@ -50,7 +51,7 @@ def main() -> int:
     def tick() -> None:
         nonlocal eye, projector
         current_eye_type = getattr(settings, "eye_type", "human")
-        if type(eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure") != current_eye_type and not (current_eye_type == "human" and type(eye).__name__ == "Eye"):
+        if type(eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure").replace("ugalogo", "uga_logo").replace("dancingskeleton", "dancing_skeleton") != current_eye_type and not (current_eye_type == "human" and type(eye).__name__ == "Eye"):
 
             if current_eye_type == "monster": eye = MonsterEye(width, height)
 
@@ -73,6 +74,8 @@ def main() -> int:
 
 
             elif current_eye_type == "dancing_skeleton": eye = DancingSkeleton(width, height)
+
+            elif current_eye_type == "uga_logo": eye = UgaLogo(width, height)
 
             else: eye = Eye(width, height)
             projector = Projector(eye)

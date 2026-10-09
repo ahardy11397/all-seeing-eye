@@ -27,6 +27,7 @@ from creepy_figure import CreepyFigure
 from joker_eye import JokerEye
 from skull import Skull
 from dancing_skeleton import DancingSkeleton
+from uga_logo import UgaLogo
 from dashboard_server import make_dashboard_server, store
 from stream_server import broadcaster, make_server
 
@@ -143,7 +144,7 @@ def main() -> int:
         cam_mgr = CameraManager()
         while True:
             current_eye_type = getattr(settings, "eye_type", "human")
-            if type(eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure") != current_eye_type and not (current_eye_type == "human" and type(eye).__name__ == "Eye"):
+            if type(eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure").replace("ugalogo", "uga_logo").replace("dancingskeleton", "dancing_skeleton") != current_eye_type and not (current_eye_type == "human" and type(eye).__name__ == "Eye"):
 
                 if current_eye_type == "monster": eye = MonsterEye(settings.width, settings.height)
 
@@ -166,6 +167,8 @@ def main() -> int:
 
 
                 elif current_eye_type == "dancing_skeleton": eye = DancingSkeleton(settings.width, settings.height)
+
+                elif current_eye_type == "uga_logo": eye = UgaLogo(settings.width, settings.height)
 
                 else: eye = Eye(settings.width, settings.height)
 

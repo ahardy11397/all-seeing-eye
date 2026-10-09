@@ -20,6 +20,7 @@ from creepy_figure import CreepyFigure
 from joker_eye import JokerEye
 from skull import Skull
 from dancing_skeleton import DancingSkeleton
+from uga_logo import UgaLogo
 
 
 class SettingsPanel(tk.Toplevel):
@@ -201,7 +202,7 @@ class Dashboard:
     def run(self) -> int:
         def tick() -> None:
             current_eye_type = getattr(settings, "eye_type", "human")
-            if type(self.eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure") != current_eye_type and not (current_eye_type == "human" and type(self.eye).__name__ == "Eye"):
+            if type(self.eye).__name__.lower().replace("eye", "").replace("creepyfigure", "creepy_figure").replace("ugalogo", "uga_logo").replace("dancingskeleton", "dancing_skeleton") != current_eye_type and not (current_eye_type == "human" and type(self.eye).__name__ == "Eye"):
 
                 if current_eye_type == "monster": self.eye = MonsterEye(settings.width, settings.height)
 
@@ -224,6 +225,8 @@ class Dashboard:
 
 
                 elif current_eye_type == "dancing_skeleton": self.eye = DancingSkeleton(settings.width, settings.height)
+
+                elif current_eye_type == "uga_logo": self.eye = UgaLogo(settings.width, settings.height)
 
                 else: self.eye = Eye(settings.width, settings.height)
 

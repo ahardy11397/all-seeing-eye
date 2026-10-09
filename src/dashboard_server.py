@@ -299,6 +299,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <option value="joker">Joker (Heath Ledger)</option>
         <option value="skull">Skull</option>
         <option value="dancing_skeleton">Dancing Skeleton</option>
+            <option value="uga_logo">UGA Logo</option>
       </select>
     </div>
     <div class="ctl"><label>Min confidence <output id="o_min_confidence"></output></label>
