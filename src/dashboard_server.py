@@ -40,7 +40,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):  # noqa: A002 - stdlib signature
         pass
 
+    ALLOWED_CAM_ACTIONS = {
+        "focus", "torch", "zoom", "exposure_ns", "iso", "focus_distance",
+        "night_vision_gain", "night_vision_average", "night_vision"
+    }
+
+    def _is_authorized(self) -> bool:
+        token = getattr(settings, "dashboard_auth_token", "")
+        if not token:
+            return True
+        auth = self.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            auth = auth[7:].strip()
+        if not auth:
+            auth = self.headers.get("X-Auth-Token", "")
+        return auth == token
+
     def do_GET(self):  # noqa: N802
+        if not self._is_authorized():
+            self.send_response(401)
+            self.send_header("WWW-Authenticate", 'Bearer realm="Dashboard"')
+            self.end_headers()
+            self.wfile.write(b"Unauthorized")
+            return
         path = self.path.split("?")[0]
         if path in ("/", "/dashboard"):
             self._html()
@@ -56,6 +78,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self):  # noqa: N802
+        if not self._is_authorized():
+            self.send_response(401)
+            self.send_header("WWW-Authenticate", 'Bearer realm="Dashboard"')
+            self.end_headers()
+            self.wfile.write(b"Unauthorized")
+            return
         path = self.path.split("?")[0]
         if path == "/api/camera":
             length = int(self.headers.get("Content-Length", 0))
@@ -67,6 +95,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
             
             base_url = settings.camera_url.rsplit("/", 1)[0]
             action = cmd.get("action")
+            if action not in self.ALLOWED_CAM_ACTIONS:
+                self.send_error(400, f"Unsupported camera action: {action}")
+                return
             
             try:
                 val = cmd.get("value")
@@ -518,11 +549,12 @@ refreshImage('cam', '/api/cam.jpg');
         self.wfile.write(data)
 
 
-def make_dashboard_server(store_ref: StateStore, port: int, detector) -> ThreadingHTTPServer:
+def make_dashboard_server(store_ref: StateStore, port: int, detector, host: str | None = None) -> ThreadingHTTPServer:
     """detector is passed so parked_drift_px can be tuned live."""
     global store
     store = store_ref
+    bind_host = host if host is not None else getattr(settings, "dashboard_host", "0.0.0.0")
     handler = type("BoundHandler", (DashboardHandler,), {"detector": detector})
-    server = ThreadingHTTPServer(("0.0.0.0", port), handler)
+    server = ThreadingHTTPServer((bind_host, port), handler)
     server.detector = detector  # type: ignore[attr-defined]
     return server

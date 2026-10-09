@@ -132,9 +132,10 @@ def main() -> int:
         print(f"Warning: Failed to connect to camera on startup: {e}")
         camera = None
 
-    host_note = f"http://0.0.0.0:{settings.dashboard_port}/"
-    print(f"Dashboard: {host_note}   (open on this machine)")
-    print(f"Eye stream: http://0.0.0.0:{settings.stream_port}/  (open on the Mi Box)")
+    dash_host = getattr(settings, "dashboard_host", "0.0.0.0")
+    stream_host = getattr(settings, "stream_host", "0.0.0.0")
+    print(f"Dashboard: http://{dash_host}:{settings.dashboard_port}/   (open on this machine or browser)")
+    print(f"Eye stream: http://{stream_host}:{settings.stream_port}/  (open on the Mi Box / display)")
 
     frame_interval = 1.0 / max(1, settings.stream_fps)
     quality = settings.stream_jpeg_quality

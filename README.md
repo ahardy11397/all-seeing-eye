@@ -70,7 +70,12 @@ A real-time Halloween window projection mapping project. An animated eye project
    ```
    *(On first run, YOLOv8 will automatically download `yolov8n.pt` ~6 MB).*
 
-4. Edit `src/config.py` and update your phone's camera URL:
+4. Configure settings:
+   Copy `settings.example.json` to `settings.json` and adjust your phone's camera URL and settings:
+   ```bash
+   cp settings.example.json settings.json
+   ```
+   Or edit `src/config.py`:
    ```python
    camera_url: str = "http://<phone-ip>:8080/video"
    ```
@@ -109,6 +114,7 @@ Open this in your laptop or phone browser to monitor tracking and tune settings 
   - **Parked cooldown (s)**: How long to ignore a stationary vehicle after it stops moving.
   - **Parked drift (px)**: Maximum allowable movement before a vehicle is classified as parked.
   - **Eye smoothing**: Speed/damping of eye movement toward targets.
+  - **Eye type selection**: Human, monster, zombie, dragon, snake, spider, bug, creepy figure, joker, 3D skull, dancing skeleton, UGA logo.
   - **Reset to defaults**: Restore baseline settings with one click.
 
 ---
@@ -136,7 +142,7 @@ Open this in your laptop or phone browser to monitor tracking and tune settings 
 
 ---
 
-## Configuration Reference (`src/config.py`)
+## Configuration Reference (`src/config.py` & `settings.json`)
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
@@ -144,16 +150,20 @@ Open this in your laptop or phone browser to monitor tracking and tune settings 
 | `use_local_camera` | `False` | Set `True` to use local USB webcam |
 | `local_camera_index` | `0` | V4L2 device index for local webcam |
 | `width`, `height` | `640`, `480` | Render and capture canvas resolution |
+| `stream_host` | `0.0.0.0` | Bind host for projector display stream (`127.0.0.1` for local-only) |
 | `stream_port` | `8000` | Port for the projector display web stream |
 | `stream_fps` | `30` | Target frame rate for network streaming |
 | `stream_jpeg_quality` | `85` | JPEG compression quality for stream |
+| `dashboard_host` | `0.0.0.0` | Bind host for dashboard server (`127.0.0.1` for local-only) |
 | `dashboard_port` | `8090` | Port for the web monitoring dashboard |
+| `dashboard_auth_token` | `""` | Optional Bearer / `X-Auth-Token` to protect dashboard endpoints |
 | `detection_interval` | `3` | Run YOLO inference every N frames |
-| `min_confidence` | `0.7` | Minimum detection confidence threshold |
-| `min_box_area` | `8000` | Minimum bounding box area in pixels² |
+| `min_confidence` | `0.5` | Minimum detection confidence threshold |
+| `min_box_area` | `1500` | Minimum bounding box area in pixels² |
 | `required_detections` | `3` | Consecutive frames needed to confirm target |
 | `parked_cooldown_s` | `20.0` | Cooldown period before re-checking parked car |
 | `smoothing` | `0.18` | Motion lerp factor (higher = faster, lower = smoother) |
+| `eye_type` | `human` | Active eye mode (`monster`, `zombie`, `dragon`, `snake`, `skull`, etc.) |
 | `eye_radius` | `160` | Eyeball radius in canvas pixels |
 | `iris_radius` | `70` | Iris radius in canvas pixels |
 | `pupil_radius` | `28` | Resting pupil radius in canvas pixels |

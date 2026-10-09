@@ -124,6 +124,7 @@ refresh();
         self.wfile.write(jpeg)
 
 
-def make_server(broadcaster: FrameBroadcaster, port: int) -> ThreadingHTTPServer:
+def make_server(broadcaster: FrameBroadcaster, port: int, host: str | None = None) -> ThreadingHTTPServer:
+    bind_host = host if host is not None else getattr(settings, "stream_host", "0.0.0.0")
     handler = type("BoundHandler", (_Handler,), {"broadcaster": broadcaster})
-    return ThreadingHTTPServer(("0.0.0.0", port), handler)
+    return ThreadingHTTPServer((bind_host, port), handler)

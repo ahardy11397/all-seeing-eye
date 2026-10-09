@@ -1,0 +1,55 @@
+{
+    "camera_url": "http://<PHONE_IP>:8080/video",
+    "width": 640,
+    "height": 480,
+    "fps": 30,
+    "eye_radius": 160,
+    "iris_radius": 70,
+    "pupil_radius": 28,
+    "max_pupil_offset": 45,
+    "smoothing": 0.18,
+    "blink_enabled": false,
+    "blink_interval_s": [
+        2.0,
+        8.0
+    ],
+    "blink_duration_s": [
+        0.12,
+        0.25
+    ],
+    "tracking_enabled": true,
+    "idle_glance_interval_s": [
+        1.2,
+        3.5
+    ],
+    "idle_glance_duration_s": [
+        1.2,
+        2.8
+    ],
+    "detection_interval": 3,
+    "min_confidence": 0.5,
+    "min_box_area": 1500,
+    "required_detections": 3,
+    "parked_cooldown_s": 20.0,
+    "parked_drift_px": 25,
+    "use_local_camera": false,
+    "local_camera_index": 0,
+    "stream_host": "0.0.0.0",
+    "stream_port": 8000,
+    "stream_fps": 30,
+    "stream_jpeg_quality": 85,
+    "dashboard_host": "0.0.0.0",
+    "dashboard_port": 8090,
+    "dashboard_auth_token": "",
+    "eye_type": "human",
+    "cam_zoom": 0,
+    "cam_focus_distance": 0,
+    "cam_exposure": 50,
+    "cam_gain": 50,
+    "cam_night_vision_exposure": 50,
+    "cam_night_vision_gain": 50,
+    "cam_night": false,
+    "idle_mode_time_s": 3.5,
+    "fullscreen": true,
+    "debug_overlay": true
+}

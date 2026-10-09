@@ -31,10 +31,13 @@ class Settings:
     use_local_camera: bool = False
     local_camera_index: int = 0
     
+    stream_host: str = "0.0.0.0"
     stream_port: int = 8000
     stream_fps: int = 30
     stream_jpeg_quality: int = 85
+    dashboard_host: str = "0.0.0.0"
     dashboard_port: int = 8090
+    dashboard_auth_token: str = ""
     
     eye_type: str = "human"
     
