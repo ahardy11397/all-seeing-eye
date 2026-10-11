@@ -16,6 +16,10 @@ class Projector:
 
     def frame(self) -> ImageTk.PhotoImage:
         pil = self.eye.render()
+        if getattr(settings, "flip_horizontal", False):
+            pil = pil.transpose(Image.FLIP_LEFT_RIGHT)
+        if getattr(settings, "flip_vertical", False):
+            pil = pil.transpose(Image.FLIP_TOP_BOTTOM)
         return ImageTk.PhotoImage(pil)
 
     @staticmethod

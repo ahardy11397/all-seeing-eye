@@ -51,5 +51,7 @@
     "cam_night": false,
     "idle_mode_time_s": 3.5,
     "fullscreen": true,
-    "debug_overlay": true
+    "debug_overlay": true,
+    "flip_horizontal": false,
+    "flip_vertical": false
 }

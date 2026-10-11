@@ -92,6 +92,24 @@ class SettingsPanel(tk.Toplevel):
                      0.05, 0.6, settings.smoothing, 0.01,
                      lambda v: (setattr(settings, "smoothing", float(v)), settings.save()))
 
+        tk.Label(outer, text="Projection orientation", fg="#fff", bg="#181818", font=("Arial", 12, "bold")).pack(anchor="w", pady=(10, 4))
+
+        self.flip_h_var = tk.BooleanVar(value=getattr(settings, "flip_horizontal", False))
+        def on_flip_h_change(*args):
+            setattr(settings, "flip_horizontal", self.flip_h_var.get())
+            settings.save()
+        self.flip_h_var.trace_add("write", on_flip_h_change)
+        tk.Checkbutton(outer, text="Flip horizontally", variable=self.flip_h_var,
+                       bg="#181818", fg="#ccc", selectcolor="#222", activebackground="#181818", activeforeground="#fff").pack(anchor="w")
+
+        self.flip_v_var = tk.BooleanVar(value=getattr(settings, "flip_vertical", False))
+        def on_flip_v_change(*args):
+            setattr(settings, "flip_vertical", self.flip_v_var.get())
+            settings.save()
+        self.flip_v_var.trace_add("write", on_flip_v_change)
+        tk.Checkbutton(outer, text="Flip vertically", variable=self.flip_v_var,
+                       bg="#181818", fg="#ccc", selectcolor="#222", activebackground="#181818", activeforeground="#fff").pack(anchor="w")
+
         btns = tk.Frame(outer, bg="#181818")
         btns.pack(fill=tk.X, pady=(12, 0))
         tk.Button(btns, text="Reset to defaults", command=self._reset).pack(side=tk.LEFT)
@@ -118,10 +136,11 @@ class SettingsPanel(tk.Toplevel):
     def _fmt(v: float) -> str:
         return f"{v:.2f}" if isinstance(v, float) and v < 10 else f"{int(round(v))}"
 
-def _reset(self) -> None:
+    def _reset(self) -> None:
         defaults = type(settings)()
         for field in ("min_confidence", "min_box_area", "required_detections",
-                      "detection_interval", "parked_cooldown_s", "smoothing"):
+                      "detection_interval", "parked_cooldown_s", "smoothing",
+                      "flip_horizontal", "flip_vertical"):
             setattr(settings, field, getattr(defaults, field))
         setattr(settings, "eye_type", "human")
         settings.parked_drift_px = 25
@@ -257,6 +276,10 @@ class Dashboard:
             self.cam_canvas.image = cam_photo
 
             eye_pil = self.eye.render()
+            if getattr(settings, "flip_horizontal", False):
+                eye_pil = eye_pil.transpose(Image.FLIP_LEFT_RIGHT)
+            if getattr(settings, "flip_vertical", False):
+                eye_pil = eye_pil.transpose(Image.FLIP_TOP_BOTTOM)
             eye_photo = ImageTk.PhotoImage(eye_pil)
             self.eye_canvas.itemconfig(self.eye_img_id, image=eye_photo)
             self.eye_canvas.image = eye_photo

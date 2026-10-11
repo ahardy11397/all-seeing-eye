@@ -53,6 +53,8 @@ class Settings:
     idle_mode_time_s: float = 3.5
     fullscreen: bool = True
     debug_overlay: bool = True
+    flip_horizontal: bool = False
+    flip_vertical: bool = False
 
     def load(self, path="settings.json"):
         if os.path.exists(path):

@@ -168,6 +168,8 @@ Open this in your laptop or phone browser to monitor tracking and tune settings 
 | `iris_radius` | `70` | Iris radius in canvas pixels |
 | `pupil_radius` | `28` | Resting pupil radius in canvas pixels |
 | `max_pupil_offset` | `45` | Maximum travel distance of iris from center |
+| `flip_horizontal` | `False` | Flip projected output image horizontally (e.g. for rear projection) |
+| `flip_vertical` | `False` | Flip projected output image vertically (e.g. for ceiling mount) |
 
 ---
 

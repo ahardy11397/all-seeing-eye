@@ -199,6 +199,10 @@ def main() -> int:
 
             eye.update(target_x, target_y, time.time())
             eye_pil = eye.render()
+            if getattr(settings, "flip_horizontal", False):
+                eye_pil = eye_pil.transpose(Image.FLIP_LEFT_RIGHT)
+            if getattr(settings, "flip_vertical", False):
+                eye_pil = eye_pil.transpose(Image.FLIP_TOP_BOTTOM)
 
             # public stream: plain eye, black background
             broadcaster.publish(_jpeg(eye_pil, quality))
