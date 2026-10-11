@@ -192,12 +192,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 setattr(settings, key, str(value))
                 applied[key] = str(value)
             elif key in bool_fields:
-                setattr(settings, key, bool(value))
-                applied[key] = bool(value)
-            
-            
+                if isinstance(value, str):
+                    parsed_bool = value.lower() in ("true", "1", "on", "yes")
+                else:
+                    parsed_bool = bool(value)
+                setattr(settings, key, parsed_bool)
+                applied[key] = parsed_bool
 
-        
         settings.save()
         self.send_response(200)
         body = json.dumps({"ok": True, "applied": applied}).encode()

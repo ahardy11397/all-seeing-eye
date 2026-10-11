@@ -21,6 +21,7 @@ from joker_eye import JokerEye
 from skull import Skull
 from dancing_skeleton import DancingSkeleton
 from uga_logo import UgaLogo
+from projector import apply_orientation_flips
 
 
 class SettingsPanel(tk.Toplevel):
@@ -275,11 +276,7 @@ class Dashboard:
             self.cam_canvas.itemconfig(self.cam_img_id, image=cam_photo)
             self.cam_canvas.image = cam_photo
 
-            eye_pil = self.eye.render()
-            if getattr(settings, "flip_horizontal", False):
-                eye_pil = eye_pil.transpose(Image.FLIP_LEFT_RIGHT)
-            if getattr(settings, "flip_vertical", False):
-                eye_pil = eye_pil.transpose(Image.FLIP_TOP_BOTTOM)
+            eye_pil = apply_orientation_flips(self.eye.render())
             eye_photo = ImageTk.PhotoImage(eye_pil)
             self.eye_canvas.itemconfig(self.eye_img_id, image=eye_photo)
             self.eye_canvas.image = eye_photo

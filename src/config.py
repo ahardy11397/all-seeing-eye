@@ -71,6 +71,7 @@ class Settings:
         try:
             with open(path, "w") as f:
                 json.dump(asdict(self), f, indent=4)
+                f.write("\n")
         except Exception as e:
             print(f"Failed to save settings: {e}")
 
